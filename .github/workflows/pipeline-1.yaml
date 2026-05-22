@@ -1,4 +1,4 @@
-name: ANSIBLE + CONTROL PLANE
+name: bootstrap pipeline
 
 on:
   workflow_dispatch:

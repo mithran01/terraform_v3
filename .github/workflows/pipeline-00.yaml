@@ -1,4 +1,4 @@
-name: INFRA-DESTROY-BOOTSTRAP
+name: infra destroy pipeline
 
 on:
   workflow_dispatch:

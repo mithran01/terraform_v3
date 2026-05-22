@@ -26,9 +26,9 @@ data "aws_iam_policy_document" "ec2_assume_role" {
 # IAM Role
 # -----------------------------------------------------------------------------
 
-resource "aws_iam_role" "kubeadm_node_role" {
+resource "aws_iam_role" "kubeadm_role" {
 
-  name = "kubeadm-node-role"
+  name = "kubeadm-role"
 
   assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
 }
@@ -39,7 +39,7 @@ resource "aws_iam_role" "kubeadm_node_role" {
 
 resource "aws_iam_role_policy_attachment" "ebs_csi" {
 
-  role = aws_iam_role.kubeadm_node_role.name
+  role = aws_iam_role.kubeadm_role.name
 
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
@@ -50,7 +50,7 @@ resource "aws_iam_role_policy_attachment" "ebs_csi" {
 
 resource "aws_iam_role_policy_attachment" "efs_csi" {
 
-  role = aws_iam_role.kubeadm_node_role.name
+  role = aws_iam_role.kubeadm_role.name
 
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
 }
@@ -61,14 +61,14 @@ resource "aws_iam_role_policy_attachment" "efs_csi" {
 
 resource "aws_iam_role_policy_attachment" "ec2_readonly" {
 
-  role = aws_iam_role.kubeadm_node_role.name
+  role = aws_iam_role.kubeadm_role.name
 
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "ssm" {
 
-  role = aws_iam_role.kubeadm_node_role.name
+  role = aws_iam_role.kubeadm_role.name
 
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
@@ -77,9 +77,9 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 # Instance Profile
 # -----------------------------------------------------------------------------
 
-resource "aws_iam_instance_profile" "kubeadm_profile" {
+resource "aws_iam_instance_profile" "kubeadm_profile_01" {
 
-  name = "kubeadm-instance-profile"
+  name = "kubeadm-instance-profile-01"
 
-  role = aws_iam_role.kubeadm_node_role.name
+  role = aws_iam_role.kubeadm_role.name
 }
