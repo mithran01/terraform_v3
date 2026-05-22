@@ -15,7 +15,7 @@ resource "aws_instance" "ansible_plane" {
 
 
   provisioner "file" {
-    source      = "demov2.pem"
+    source      = "../demov2.pem"
     destination = "/home/ec2-user/demov2.pem" #
   }
 
