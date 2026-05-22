@@ -56,7 +56,7 @@
 # ---------------------------------------------------------
 
 - name: Store kubeadm join command in SSM
-  amazon.aws.ssm_parameter:
+  community.aws.ssm_parameter:
     name: "/kubeadm/prod/worker/join-command"
     description: "Kubernetes worker join command"
     value: "{{ join_command.stdout }}"
@@ -71,7 +71,7 @@
 # ---------------------------------------------------------
 
 - name: Read SSM parameter for verification
-  amazon.aws.aws_ssm:
+  community.aws.ssm_parameter:
     name: "/kubeadm/prod/worker/join-command"
     region: "us-east-1"
     decrypt: true
