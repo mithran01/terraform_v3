@@ -44,6 +44,9 @@ resource "aws_iam_role" "ansible_server_role" {
     ]
   })
 }
+# ---------------------------------------------------------
+# IAM POLICY
+# ---------------------------------------------------------
 
 resource "aws_iam_policy" "ansible_server_policy" {
 
@@ -55,19 +58,44 @@ resource "aws_iam_policy" "ansible_server_policy" {
 
     Statement = [
 
+      # ---------------------------------------------------------
+      # SSM PARAMETER STORE
+      # ---------------------------------------------------------
+
       {
+        Sid    = "SSMParameterStoreAccess"
         Effect = "Allow"
 
         Action = [
+
+          # Write parameter
           "ssm:PutParameter",
+
+          # Read single parameter
           "ssm:GetParameter",
-          "ssm:DeleteParameter"
+
+          # Read multiple parameters
+          "ssm:GetParameters",
+
+          # Delete parameter
+          "ssm:DeleteParameter",
+
+          # Describe parameters
+          "ssm:DescribeParameters",
+
+          # Required by Ansible AWS module
+          "ssm:ListTagsForResource"
         ]
 
         Resource = "*"
       },
 
+      # ---------------------------------------------------------
+      # EC2 DESCRIBE
+      # ---------------------------------------------------------
+
       {
+        Sid    = "EC2Describe"
         Effect = "Allow"
 
         Action = [
@@ -78,7 +106,12 @@ resource "aws_iam_policy" "ansible_server_policy" {
         Resource = "*"
       },
 
+      # ---------------------------------------------------------
+      # AUTOSCALING DESCRIBE
+      # ---------------------------------------------------------
+
       {
+        Sid    = "AutoScalingDescribe"
         Effect = "Allow"
 
         Action = [
@@ -90,7 +123,6 @@ resource "aws_iam_policy" "ansible_server_policy" {
     ]
   })
 }
-
 resource "aws_iam_role_policy_attachment" "ansible_attach" {
 
   role       = aws_iam_role.ansible_server_role.name

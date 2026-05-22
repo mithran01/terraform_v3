@@ -74,7 +74,7 @@
   community.aws.ssm_parameter:
     name: "/kubeadm/prod/worker/join-command"
     region: "us-east-1"
-    decrypt: true
+    decryption: true
   register: ssm_verify
   delegate_to: localhost
 
