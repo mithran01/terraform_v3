@@ -46,23 +46,23 @@ jobs:
       # ---------------------------------------------------------
 
       - name: Terraform Init - ansible-plane
-        working-directory: terraform_v3/ansible-plane
+        working-directory: ansible-plane
         run: terraform init
 
       - name: Terraform Format Check - ansible-plane
-        working-directory: terraform_v3/ansible-plane
+        working-directory: ansible-plane
         run: terraform fmt -check
 
       - name: Terraform Validate - ansible-plane
-        working-directory: terraform_v3/ansible-plane
+        working-directory: ansible-plane
         run: terraform validate
 
       - name: Terraform Plan - ansible-plane
-        working-directory: terraform_v3/ansible-plane
+        working-directory: ansible-plane
         run: terraform plan
 
       - name: Terraform Apply - ansible-plane
-        working-directory: terraform_v3/ansible-plane
+        working-directory: ansible-plane
         run: terraform apply -auto-approve
 
       # ---------------------------------------------------------
@@ -70,21 +70,21 @@ jobs:
       # ---------------------------------------------------------
 
       - name: Terraform Init - control-plane
-        working-directory: terraform_v3/control-plane
+        working-directory: control-plane
         run: terraform init
 
       - name: Terraform Format Check - control-plane
-        working-directory: terraform_v3/control-plane
+        working-directory: control-plane
         run: terraform fmt -check
 
       - name: Terraform Validate - control-plane
-        working-directory: terraform_v3/control-plane
+        working-directory: control-plane
         run: terraform validate
 
       - name: Terraform Plan - control-plane
-        working-directory: terraform_v3/control-plane
+        working-directory: control-plane
         run: terraform plan
 
       - name: Terraform Apply - control-plane
-        working-directory: terraform_v3/control-plane
+        working-directory: control-plane
         run: terraform apply -auto-approve
