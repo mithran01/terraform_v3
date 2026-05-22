@@ -20,7 +20,7 @@ resource "aws_instance" "ansible_plane" {
   }
 
   provisioner "file" {
-    source      = "ansible.sh"
+    source      = "../ansible.sh"
     destination = "/home/ec2-user/ansible.sh" # ...to the EC2 master node
   }
 

@@ -1,0 +1,56 @@
+name: INFRA-DESTROY
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform_destroy:
+    runs-on: ubuntu-latest
+
+    env:
+      TF_VAR_ansible_plane_key: ${{ secrets.DEMOV1 }}
+      TF_VAR_control_plane_key: ${{ secrets.DEMOV2 }}
+
+    steps:
+
+      - name: Git checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.14.9
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # ---------------------------------------------------------
+      # CONTROL PLANE
+      # ---------------------------------------------------------
+
+      - name: Terraform Init - control-plane
+        working-directory: control-plane
+        run: terraform init
+
+      - name: Terraform Destroy - control-plane
+        working-directory: control-plane
+        run: terraform destroy -auto-approve
+
+      # ---------------------------------------------------------
+      # ANSIBLE PLANE
+      # ---------------------------------------------------------
+
+      - name: Terraform Init - ansible-plane
+        working-directory: ansible-plane
+        run: terraform init
+
+      - name: Terraform Destroy - ansible-plane
+        working-directory: ansible-plane
+        run: terraform destroy -auto-approve
