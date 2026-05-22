@@ -18,6 +18,19 @@ sudo dnf install -y python3 python3-pip
 echo "[+] Installing ansible on controller node"
 sudo pip3 install ansible
 
+echo "[+] Installing AWS dependencies"
+sudo pip3 install boto3 botocore
+
+echo "[+] Installing Ansible AWS collection"
+
+ansible-galaxy collection install amazon.aws
+
+echo "[+] Installing AWS CLI"
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+rm -rf aws awscliv2.zip
+
 ### step 4: create ansible directory
 echo "[+] Creating /etc/ansible directory if not exist"
 sudo mkdir -p /etc/ansible

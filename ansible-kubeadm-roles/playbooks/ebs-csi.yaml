@@ -1,0 +1,7 @@
+---
+- name: Install AWS EBS CSI Driver
+  hosts: controlplane
+  become: true
+
+  roles:
+    - ebs-csi

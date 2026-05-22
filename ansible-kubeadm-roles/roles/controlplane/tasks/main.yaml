@@ -1,0 +1,83 @@
+---
+- name: Initialize Kubernetes cluster
+  shell: |
+    kubeadm init \
+      --pod-network-cidr=192.168.0.0/16 \
+      --ignore-preflight-errors=NumCPU
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+# ---------------------------------------------------------
+# Configure kubectl access
+# ---------------------------------------------------------
+
+- name: Create kube config directory
+  file:
+    path: /home/rocky/.kube
+    state: directory
+    owner: rocky
+    group: rocky
+    mode: '0755'
+
+- name: Copy admin.conf
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/rocky/.kube/config
+    remote_src: true
+    owner: rocky
+    group: rocky
+    mode: '0644'
+
+# ---------------------------------------------------------
+# Generate permanent worker join command
+# ---------------------------------------------------------
+
+- name: Generate kubeadm join command
+  shell: |
+    kubeadm token create \
+      --ttl 0 \
+      --print-join-command
+  register: join_command
+
+# ---------------------------------------------------------
+# Save locally for debugging
+# ---------------------------------------------------------
+
+- name: Save join command script
+  copy:
+    content: |
+      #!/bin/bash
+      {{ join_command.stdout }}
+    dest: /tmp/kubeadm_join_cmd.sh
+    mode: '0755'
+
+# ---------------------------------------------------------
+# Store join command in AWS SSM Parameter Store
+# ---------------------------------------------------------
+
+- name: Store kubeadm join command in SSM
+  amazon.aws.ssm_parameter:
+    name: "/kubeadm/prod/worker/join-command"
+    description: "Kubernetes worker join command"
+    value: "{{ join_command.stdout }}"
+    type: "SecureString"
+    overwrite_value: always
+    region: "us-east-1"
+    state: present
+  delegate_to: localhost
+
+# ---------------------------------------------------------
+# Verify parameter
+# ---------------------------------------------------------
+
+- name: Read SSM parameter for verification
+  amazon.aws.aws_ssm:
+    name: "/kubeadm/prod/worker/join-command"
+    region: "us-east-1"
+    decrypt: true
+  register: ssm_verify
+  delegate_to: localhost
+
+- name: Display stored join command
+  debug:
+    var: ssm_verify.parameter.value

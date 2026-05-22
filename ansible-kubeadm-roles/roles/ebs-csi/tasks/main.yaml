@@ -1,0 +1,44 @@
+---
+- name: Download Helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: '0755'
+
+- name: Install Helm
+  shell: |
+    export PATH=$PATH:/usr/local/bin
+    /tmp/get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Add EBS CSI Helm repo
+  shell: |
+    /usr/local/bin/helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Update Helm repos
+  shell: |
+    /usr/local/bin/helm repo update
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Install EBS CSI Driver
+  shell: |
+    /usr/local/bin/helm upgrade --install aws-ebs-csi-driver \
+      aws-ebs-csi-driver/aws-ebs-csi-driver \
+      --namespace kube-system
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Copy gp3 storageclass manifest
+  copy:
+    src: gp3-storageclass.yaml
+    dest: /tmp/gp3-storageclass.yaml
+
+- name: Apply gp3 storageclass
+  shell: |
+    kubectl apply -f /tmp/gp3-storageclass.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf

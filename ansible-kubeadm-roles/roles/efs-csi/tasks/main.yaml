@@ -1,0 +1,58 @@
+---
+- name: Download Helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: '0755'
+
+- name: Install Helm
+  shell: |
+    export PATH=$PATH:/usr/local/bin
+    /tmp/get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Verify Helm installation
+  command: /usr/local/bin/helm version
+  register: helm_version
+
+- name: Show Helm version
+  debug:
+    var: helm_version.stdout
+
+- name: Add EFS CSI Helm repo
+  command: >
+    /usr/local/bin/helm repo add aws-efs-csi-driver
+    https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+
+- name: Update Helm repos
+  command: /usr/local/bin/helm repo update
+
+- name: Install EFS CSI Driver
+  command: >
+    /usr/local/bin/helm upgrade --install aws-efs-csi-driver
+    aws-efs-csi-driver/aws-efs-csi-driver
+    --namespace kube-system
+    --set controller.serviceAccount.create=true
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Copy EFS StorageClass manifest
+  template:
+    src: efs-storageclass.yaml.j2
+    dest: /tmp/efs-storageclass.yaml
+
+- name: Apply EFS StorageClass
+  command: kubectl apply -f /tmp/efs-storageclass.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Verify EFS CSI pods
+  command: kubectl get pods -n kube-system
+  register: efs_pods
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Show kube-system pods
+  debug:
+    var: efs_pods.stdout

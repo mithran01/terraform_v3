@@ -21,9 +21,91 @@ data "aws_iam_policy_document" "ec2_assume_role" {
     ]
   }
 }
+# -----------------------------------------------------------------------------
+# IAM Role  -- ansible server
+# -----------------------------------------------------------------------------
+resource "aws_iam_role" "ansible_server_role" {
+
+  name = "ansible-server-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "ansible_server_policy" {
+
+  name = "ansible-server-policy"
+
+  policy = jsonencode({
+
+    Version = "2012-10-17"
+
+    Statement = [
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ssm:PutParameter",
+          "ssm:GetParameter",
+          "ssm:DeleteParameter"
+        ]
+
+        Resource = "*"
+      },
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+
+        Resource = "*"
+      },
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ansible_attach" {
+
+  role       = aws_iam_role.ansible_server_role.name
+  policy_arn = aws_iam_policy.ansible_server_policy.arn
+}
+
+resource "aws_iam_instance_profile" "ansible_profile" {
+
+  name = "ansible-server-profile"
+
+  role = aws_iam_role.ansible_server_role.name
+}
 
 # -----------------------------------------------------------------------------
-# IAM Role
+# IAM Role -- control plane
 # -----------------------------------------------------------------------------
 
 resource "aws_iam_role" "kubeadm_role" {
