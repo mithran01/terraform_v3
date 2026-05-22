@@ -1,3 +1,3 @@
 output "ansible_plane_ips" {
-  value = aws_instance.Ansible_plane[*].private_ip
+  value = aws_instance.ansible_plane[*].private_ip
 }
