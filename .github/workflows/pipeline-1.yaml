@@ -42,49 +42,25 @@ jobs:
           chmod 400 demov2.pem
 
       # ---------------------------------------------------------
-      # ANSIBLE SERVER
+      # ANSIBLE + CONTROL PLANE
       # ---------------------------------------------------------
 
-      - name: Terraform Init - ansible-plane
-        working-directory: ansible-plane
+      - name: Terraform Init
+        working-directory: bootstrap
         run: terraform init
 
-      - name: Terraform Format Check - ansible-plane
-        working-directory: ansible-plane
+      - name: Terraform Format Check
+        working-directory: bootstrap
         run: terraform fmt -check
 
-      - name: Terraform Validate - ansible-plane
-        working-directory: ansible-plane
+      - name: Terraform Validate
+        working-directory: bootstrap
         run: terraform validate
 
-      - name: Terraform Plan - ansible-plane
-        working-directory: ansible-plane
+      - name: Terraform Plan
+        working-directory: bootstrap
         run: terraform plan
 
-      - name: Terraform Apply - ansible-plane
-        working-directory: ansible-plane
-        run: terraform apply -auto-approve
-
-      # ---------------------------------------------------------
-      # CONTROL PLANE
-      # ---------------------------------------------------------
-
-      - name: Terraform Init - control-plane
-        working-directory: control-plane
-        run: terraform init
-
-      - name: Terraform Format Check - control-plane
-        working-directory: control-plane
-        run: terraform fmt -check
-
-      - name: Terraform Validate - control-plane
-        working-directory: control-plane
-        run: terraform validate
-
-      - name: Terraform Plan - control-plane
-        working-directory: control-plane
-        run: terraform plan
-
-      - name: Terraform Apply - control-plane
-        working-directory: control-plane
+      - name: Terraform Apply 
+        working-directory: bootstrap
         run: terraform apply -auto-approve

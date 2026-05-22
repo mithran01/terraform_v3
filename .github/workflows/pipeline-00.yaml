@@ -1,4 +1,4 @@
-name: INFRA-DESTROY
+name: INFRA-DESTROY-BOOTSTRAP
 
 on:
   workflow_dispatch:
@@ -32,25 +32,13 @@ jobs:
           aws-region: us-east-1
 
       # ---------------------------------------------------------
-      # CONTROL PLANE
+      # ANSIBLE + CONTROL PLANE
       # ---------------------------------------------------------
 
-      - name: Terraform Init - control-plane
-        working-directory: control-plane
+      - name: Terraform Init
+        working-directory: bootstrap
         run: terraform init
 
-      - name: Terraform Destroy - control-plane
-        working-directory: control-plane
-        run: terraform destroy -auto-approve
-
-      # ---------------------------------------------------------
-      # ANSIBLE PLANE
-      # ---------------------------------------------------------
-
-      - name: Terraform Init - ansible-plane
-        working-directory: ansible-plane
-        run: terraform init
-
-      - name: Terraform Destroy - ansible-plane
-        working-directory: ansible-plane
+      - name: Terraform Destroy
+        working-directory: bootstrap
         run: terraform destroy -auto-approve
