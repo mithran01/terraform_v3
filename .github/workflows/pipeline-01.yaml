@@ -1,4 +1,4 @@
-name: infra destroy pipeline - [Ansible + control Plane]
+name: infra destroy pipeline - [data-plane]
 
 on:
   workflow_dispatch:
