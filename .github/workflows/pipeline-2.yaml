@@ -1,4 +1,4 @@
-name: infra destroy pipeline
+name: data-plane pipeline
 
 on:
   workflow_dispatch:
@@ -7,12 +7,11 @@ permissions:
   contents: read
 
 jobs:
-  terraform_destroy:
+  terraform_env:
     runs-on: ubuntu-latest
 
     env:
-      TF_VAR_ansible_plane_key: ${{ secrets.DEMOV1 }}
-      TF_VAR_control_plane_key: ${{ secrets.DEMOV2_PUB }}
+        TF_VAR_aws_region: us-east-1
 
     steps:
 
@@ -32,13 +31,25 @@ jobs:
           aws-region: us-east-1
 
       # ---------------------------------------------------------
-      # ANSIBLE + CONTROL PLANE
+      # data-plane
       # ---------------------------------------------------------
 
       - name: Terraform Init
-        working-directory: bootstrap
+        working-directory: data-plane
         run: terraform init
 
-      - name: Terraform Destroy
-        working-directory: bootstrap
-        run: terraform destroy -auto-approve
+      - name: Terraform Format Check
+        working-directory: data-plane
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        working-directory: data-plane
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: data-plane
+        run: terraform plan
+
+      - name: Terraform Apply 
+        working-directory: data-plane
+        run: terraform apply -auto-approve
