@@ -1,14 +1,10 @@
 #!/bin/bash
 
 # ------------------------------------------------------------------
-# SAFE DEBUG MODE
+# DEBUG
 # ------------------------------------------------------------------
 
 set -x
-
-# ------------------------------------------------------------------
-# LOGGING
-# ------------------------------------------------------------------
 
 exec > /var/log/user-data.log 2>&1
 
@@ -17,14 +13,12 @@ echo "STARTING WORKER NODE CONFIGURATION"
 echo "================================================="
 
 # ------------------------------------------------------------------
-# SET HOSTNAME
+# HOSTNAME
 # ------------------------------------------------------------------
 
 HOSTNAME=$(curl -s http://169.254.169.254/latest/meta-data/local-hostname)
 
 hostnamectl set-hostname "$HOSTNAME"
-
-echo "Hostname set to: $HOSTNAME"
 
 # ------------------------------------------------------------------
 # DISABLE SWAP
@@ -40,7 +34,8 @@ sed -i '/swap/d' /etc/fstab
 
 setenforce 0 || true
 
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config || true
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' \
+/etc/selinux/config || true
 
 # ------------------------------------------------------------------
 # KERNEL MODULES
@@ -55,7 +50,7 @@ modprobe overlay
 modprobe br_netfilter
 
 # ------------------------------------------------------------------
-# SYSCTL SETTINGS
+# SYSCTL
 # ------------------------------------------------------------------
 
 cat <<EOF > /etc/sysctl.d/k8s.conf
@@ -67,13 +62,7 @@ EOF
 sysctl --system
 
 # ------------------------------------------------------------------
-# UPDATE SYSTEM
-# ------------------------------------------------------------------
-
-dnf update -y
-
-# ------------------------------------------------------------------
-# INSTALL REQUIRED PACKAGES
+# INSTALL PACKAGES
 # ------------------------------------------------------------------
 
 dnf install -y \
@@ -92,7 +81,7 @@ dnf install -y \
 # ------------------------------------------------------------------
 
 dnf config-manager --add-repo \
-  https://download.docker.com/linux/centos/docker-ce.repo
+https://download.docker.com/linux/centos/docker-ce.repo
 
 dnf install -y containerd.io
 
@@ -108,28 +97,29 @@ systemctl daemon-reload
 
 systemctl enable --now containerd
 
-systemctl status containerd --no-pager
-
 # ------------------------------------------------------------------
-# INSTALL KUBERNETES REPO
+# KUBERNETES REPO (MATCH CONTROL PLANE VERSION)
 # ------------------------------------------------------------------
 
 cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml.key
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key
 EOF
 
 # ------------------------------------------------------------------
 # INSTALL KUBERNETES COMPONENTS
 # ------------------------------------------------------------------
 
-dnf install -y kubelet kubeadm kubectl
+dnf install -y \
+  kubelet-1.30.14 \
+  kubeadm-1.30.14 \
+  kubectl-1.30.14
 
-systemctl enable --now kubelet
+systemctl enable kubelet
 
 # ------------------------------------------------------------------
 # INSTALL AWS CLI V2
@@ -149,24 +139,6 @@ rm -rf aws awscliv2.zip
 aws --version
 
 # ------------------------------------------------------------------
-# WAIT FOR SSM JOIN COMMAND
-# ------------------------------------------------------------------
-
-echo "Waiting for kubeadm join command from SSM..."
-
-until aws ssm get-parameter \
-  --name "/kubeadm/prod/worker/join-command" \
-  --with-decryption \
-  --query "Parameter.Value" \
-  --output text \
-  --region ${aws_region}; do
-
-  echo "SSM parameter not ready yet..."
-  sleep 15
-
-done
-
-# ------------------------------------------------------------------
 # FETCH JOIN COMMAND
 # ------------------------------------------------------------------
 
@@ -179,13 +151,27 @@ JOIN_COMMAND=$(aws ssm get-parameter \
 
 echo "JOIN COMMAND FETCHED"
 
-echo "$JOIN_COMMAND"
+# ------------------------------------------------------------------
+# START KUBELET
+# ------------------------------------------------------------------
+
+systemctl daemon-reload
+
+systemctl enable --now kubelet
+
+sleep 15
 
 # ------------------------------------------------------------------
-# JOIN KUBERNETES CLUSTER
+# JOIN CLUSTER
 # ------------------------------------------------------------------
 
 bash -c "$JOIN_COMMAND --cri-socket unix:///run/containerd/containerd.sock"
+
+# ------------------------------------------------------------------
+# WAIT FOR NODE STABILIZATION
+# ------------------------------------------------------------------
+
+sleep 30
 
 # ------------------------------------------------------------------
 # COMPLETE
