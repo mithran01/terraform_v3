@@ -10,6 +10,9 @@ jobs:
   terraform_destroy:
     runs-on: ubuntu-latest
 
+    env:
+      TF_VAR_aws_region: us-east-1
+
     steps:
 
       - name: Git checkout
