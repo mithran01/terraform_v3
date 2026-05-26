@@ -1,0 +1,48 @@
+---
+# -------------------------------------------------------------------
+# Install required packages
+# -------------------------------------------------------------------
+
+- name: Install required packages
+  package:
+    name:
+      - curl
+      - tar
+    state: present
+
+# -------------------------------------------------------------------
+# Download Helm install script
+# -------------------------------------------------------------------
+
+- name: Download Helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: '0755'
+
+# -------------------------------------------------------------------
+# Install Helm
+# -------------------------------------------------------------------
+
+- name: Install Helm
+  shell: |
+    export PATH=$PATH:/usr/local/bin
+    /tmp/get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+# -------------------------------------------------------------------
+# Verify Helm installation
+# -------------------------------------------------------------------
+
+- name: Verify Helm installation
+  command: helm version
+  register: helm_version
+
+# -------------------------------------------------------------------
+# Display Helm version
+# -------------------------------------------------------------------
+
+- name: Show Helm version
+  debug:
+    var: helm_version.stdout
