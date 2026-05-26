@@ -119,8 +119,12 @@ dnf install -y \
   kubeadm-1.30.14 \
   kubectl-1.30.14
 
+# ------------------------------------------------------------------
+# KUBELET LABELS
+# ------------------------------------------------------------------
+
 cat <<EOF > /etc/sysconfig/kubelet
-KUBELET_EXTRA_ARGS="--node-labels=node-type=data-plane,environment=prod,node.kubernetes.io/worker=true"
+KUBELET_EXTRA_ARGS="--node-labels=node-type=data-plane,environment=prod,node-role.kubernetes.io/worker=true"
 EOF
 
 systemctl enable --now kubelet
