@@ -148,6 +148,50 @@ resource "aws_iam_role" "kubeadm_role" {
 }
 
 # -----------------------------------------------------------------------------
+# IAM Role -- control plane for {kubeadm} 
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_policy" "cluster_autoscaler_policy" {
+
+  name = "cluster-autoscaler-policy"
+
+  policy = jsonencode({
+
+    Version = "2012-10-17"
+
+    Statement = [
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeTags",
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup",
+          "ec2:DescribeLaunchTemplateVersions"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}
+# -----------------------------------------------------------------------------
+# Attach cluster auto scaler policy
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy_attachment" "cluster_autoscaler_attach" {
+
+  role = aws_iam_role.kubeadm_role.name
+
+  policy_arn = aws_iam_policy.cluster_autoscaler_policy.arn
+}
+
+# -----------------------------------------------------------------------------
 # Attach EBS CSI Policy
 # -----------------------------------------------------------------------------
 
