@@ -1,0 +1,31 @@
+---
+# -------------------------------------------------------------------
+# Add metrics-server Helm repo
+# -------------------------------------------------------------------
+
+- name: Add metrics-server Helm repository
+  kubernetes.core.helm_repository:
+    name: metrics-server
+    repo_url: https://kubernetes-sigs.github.io/metrics-server/
+
+# -------------------------------------------------------------------
+# Update helm repositories
+# -------------------------------------------------------------------
+
+- name: Update Helm repositories
+  command: helm repo update
+
+# -------------------------------------------------------------------
+# Install metrics-server
+# -------------------------------------------------------------------
+
+- name: Install metrics-server
+  kubernetes.core.helm:
+    name: metrics-server
+    chart_ref: metrics-server/metrics-server
+    release_namespace: kube-system
+
+    values:
+      args:
+        - --kubelet-insecure-tls
+        - --kubelet-preferred-address-types=InternalIP
