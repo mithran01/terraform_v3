@@ -1,0 +1,54 @@
+---
+# -------------------------------------------------------------------
+# Add Cluster Autoscaler Helm repository
+# -------------------------------------------------------------------
+
+- name: Add Cluster Autoscaler Helm repository
+  kubernetes.core.helm_repository:
+    name: autoscaler
+    repo_url: https://kubernetes.github.io/autoscaler
+    kubeconfig: /etc/kubernetes/admin.conf
+
+# -------------------------------------------------------------------
+# Update Helm repositories
+# -------------------------------------------------------------------
+
+- name: Update Helm repositories
+  command: helm repo update
+
+# -------------------------------------------------------------------
+# Install Cluster Autoscaler
+# -------------------------------------------------------------------
+
+- name: Install Cluster Autoscaler
+  kubernetes.core.helm:
+    name: cluster-autoscaler
+    chart_ref: autoscaler/cluster-autoscaler
+    release_namespace: kube-system
+
+    kubeconfig: /etc/kubernetes/admin.conf
+
+    values:
+
+      autoDiscovery:
+        clusterName: openemr-prod
+
+      awsRegion: us-east-1
+
+      cloudProvider: aws
+
+      rbac:
+        create: true
+
+      extraArgs:
+        skip-nodes-with-local-storage: "false"
+        expander: least-waste
+        balance-similar-node-groups: "true"
+
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
