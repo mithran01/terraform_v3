@@ -7,6 +7,7 @@
   kubernetes.core.helm_repository:
     name: metrics-server
     repo_url: https://kubernetes-sigs.github.io/metrics-server/
+    kubeconfig: /etc/kubernetes/admin.conf
 
 # -------------------------------------------------------------------
 # Update helm repositories
@@ -24,6 +25,7 @@
     name: metrics-server
     chart_ref: metrics-server/metrics-server
     release_namespace: kube-system
+    kubeconfig: /etc/kubernetes/admin.conf
 
     values:
       args:
