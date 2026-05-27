@@ -7,5 +7,5 @@ output "control_plane_ips" {
 }
 
 output "ansible_plane_instance_id" {
-  value = aws_instance.ansible_server.id
+  value = aws_instance.ansible_plane[*].id
 }
