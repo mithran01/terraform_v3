@@ -1,0 +1,322 @@
+---
+- name: Deploy OpenEMR with EFS CSI
+  hosts: controlplane
+  become: true
+
+  vars:
+
+    namespace: openemr
+
+    kubeconfig_path: /etc/kubernetes/admin.conf
+
+    openemr_image: openemr/openemr:7.0.3
+
+    efs_storage_class: efs-sc
+
+    default_storage_size: 5Gi
+
+    oe_admin_user: admin
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Generate OpenEMR Admin Password
+    # -------------------------------------------------------------------------
+
+    - name: Generate OpenEMR admin password
+      set_fact:
+        oe_admin_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+
+    # -------------------------------------------------------------------------
+    # OpenEMR Secret
+    # -------------------------------------------------------------------------
+
+    - name: Create OpenEMR Secret manifest
+      copy:
+        dest: /tmp/openemr-secret.yaml
+        content: |
+          apiVersion: v1
+          kind: Secret
+
+          metadata:
+            name: openemr-secret
+            namespace: {{ namespace }}
+
+          type: Opaque
+
+          stringData:
+
+            admin-username: "{{ oe_admin_user }}"
+
+            admin-password: "{{ oe_admin_password }}"
+
+    - name: Apply OpenEMR Secret
+      command: kubectl apply -f /tmp/openemr-secret.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    # -------------------------------------------------------------------------
+    # PVC for Default folder
+    # -------------------------------------------------------------------------
+
+    - name: Create OpenEMR Default PVC
+      copy:
+        dest: /tmp/openemr-default-pvc.yaml
+        content: |
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+
+          metadata:
+            name: openemr-default
+            namespace: {{ namespace }}
+
+            labels:
+              app: openemr
+
+          spec:
+
+            accessModes:
+              - ReadWriteMany
+
+            storageClassName: {{ efs_storage_class }}
+
+            resources:
+              requests:
+                storage: {{ default_storage_size }}
+
+    - name: Apply OpenEMR Default PVC
+      command: kubectl apply -f /tmp/openemr-default-pvc.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    # -------------------------------------------------------------------------
+    # OpenEMR Deployment
+    # -------------------------------------------------------------------------
+
+    - name: Create OpenEMR Deployment manifest
+      copy:
+        dest: /tmp/openemr-deployment.yaml
+        content: |
+          apiVersion: apps/v1
+          kind: Deployment
+
+          metadata:
+            name: openemr
+            namespace: {{ namespace }}
+
+            labels:
+              app: openemr
+
+          spec:
+
+            replicas: 1
+
+            selector:
+              matchLabels:
+                app: openemr
+
+            template:
+
+              metadata:
+                labels:
+                  app: openemr
+
+              spec:
+
+                # -------------------------------------------------------------
+                # Init Container
+                # -------------------------------------------------------------
+
+                initContainers:
+
+                  - name: init-openemr-default
+
+                    image: {{ openemr_image }}
+
+                    command:
+                      - /bin/sh
+                      - -c
+                      - |
+                        mkdir -p /mnt/default
+
+                        if [ ! -f /mnt/default/.initialized ]; then
+
+                          echo "Copying initial OpenEMR default..."
+
+                          cp -r /var/www/localhost/htdocs/openemr/sites/default/. /mnt/default/ || true
+                          
+                          touch /mnt/default/.initialized
+
+                        else
+
+                          echo "Default already initialized"
+
+                        fi
+
+                    volumeMounts:
+
+                      - name: openemr-default
+                        mountPath: /mnt/default
+
+                # -------------------------------------------------------------
+                # Main Container
+                # -------------------------------------------------------------
+
+                containers:
+
+                  - name: openemr
+
+                    image: {{ openemr_image }}
+
+                    imagePullPolicy: IfNotPresent
+
+                    ports:
+                      - containerPort: 80
+                        name: http
+
+                    env:
+                      # redis
+                      - name: REDIS_SERVER
+                        value: redis
+
+                      # -------------------------------------------------------
+                      # MariaDB
+                      # -------------------------------------------------------
+
+                      - name: MYSQL_HOST
+                        value: mariadb
+                      
+                      - name: DB_PORT
+                        value: "3306"
+
+                      - name: MYSQL_DATABASE
+                        value: openemr
+
+                      - name: MYSQL_USER
+                        valueFrom:
+                          secretKeyRef:
+                            name: mariadb-secret
+                            key: database-user
+
+                      - name: MYSQL_PASS
+                        valueFrom:
+                          secretKeyRef:
+                            name: mariadb-secret
+                            key: database-password
+
+                      - name: MYSQL_ROOT_PASS
+                        valueFrom:
+                          secretKeyRef:
+                            name: mariadb-secret
+                            key: database-root-password
+
+                      # -------------------------------------------------------
+                      # OpenEMR Admin
+                      # -------------------------------------------------------
+
+                      - name: OE_USER
+                        valueFrom:
+                          secretKeyRef:
+                            name: openemr-secret
+                            key: admin-username
+
+                      - name: OE_PASS
+                        valueFrom:
+                          secretKeyRef:
+                            name: openemr-secret
+                            key: admin-password
+                    lifecycle:
+                      postStart:
+                        exec:
+                          command:
+                            - /bin/sh
+                            - -c
+                            - |
+                              sleep 5
+                              # Directory permissions
+                              find /var/www/localhost/htdocs/openemr/sites/default -type d -exec chmod 775 {} \;
+                              find /var/www/localhost/htdocs/openemr/sites/default -type f -name "*.php" -exec chmod 644 {} \;
+                    
+                    volumeMounts:
+
+                      - name: openemr-default
+                        mountPath: /var/www/localhost/htdocs/openemr/sites/default
+
+                    resources:
+                      requests:
+                        cpu: "500m"
+                        memory: "1Gi"
+
+                      limits:
+                        cpu: "1"
+                        memory: "2Gi"
+
+                volumes:
+
+                  - name: openemr-default
+
+                    persistentVolumeClaim:
+                      claimName: openemr-default
+
+    - name: Apply OpenEMR Deployment
+      command: kubectl apply -f /tmp/openemr-deployment.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    # -------------------------------------------------------------------------
+    # OpenEMR Service
+    # -------------------------------------------------------------------------
+
+    - name: Create OpenEMR Service
+      copy:
+        dest: /tmp/openemr-service.yaml
+        content: |
+          apiVersion: v1
+          kind: Service
+
+          metadata:
+            name: openemr
+            namespace: {{ namespace }}
+
+          spec:
+
+            selector:
+              app: openemr
+
+            ports:
+              - name: http
+                port: 80
+                targetPort: 80
+
+            type: ClusterIP
+
+    - name: Apply OpenEMR Service
+      command: kubectl apply -f /tmp/openemr-service.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    # -------------------------------------------------------------------------
+    # Wait for Deployment
+    # -------------------------------------------------------------------------
+
+    - name: Wait for OpenEMR rollout
+      command: >
+        kubectl rollout status deployment/openemr
+        -n {{ namespace }}
+        --timeout=600s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    # -------------------------------------------------------------------------
+    # Show Credentials
+    # -------------------------------------------------------------------------
+
+    - name: Show OpenEMR credentials
+      debug:
+        msg:
+          - "======================================="
+          - "OpenEMR Credentials"
+          - "======================================="
+          - "Username: {{ oe_admin_user }}"
+          - "Password: {{ oe_admin_password }}"
+          - "======================================="
