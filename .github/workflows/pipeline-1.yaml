@@ -89,7 +89,7 @@ jobs:
         id: terraform_outputs
         working-directory: bootstrap
         run: |
-          echo "ansible_ip=$(terraform output -raw ansible_plane_ips)" >> $GITHUB_OUTPUT
+          echo "ansible_ip=$(terraform output -raw ansible_plane_public_ips)" >> $GITHUB_OUTPUT
           echo "control_plane_ip=$(terraform output -raw control_plane_ips)" >> $GITHUB_OUTPUT
           echo "ansible_instance_id=$(terraform output -raw ansible_plane_instance_id)" >> $GITHUB_OUTPUT
 
