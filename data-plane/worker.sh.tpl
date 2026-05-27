@@ -124,10 +124,12 @@ dnf install -y \
 # ------------------------------------------------------------------
 
 cat <<EOF > /etc/sysconfig/kubelet
-KUBELET_EXTRA_ARGS="--node-labels=node-type=data-plane,environment=prod,node-role.kubernetes.io/worker=true"
+KUBELET_EXTRA_ARGS="--node-labels=node-type=data-plane,environment=prod,role=worker"
 EOF
 
-systemctl enable --now kubelet
+systemctl daemon-reload
+
+systemctl enable kubelet
 
 # ------------------------------------------------------------------
 # INSTALL AWS CLI V2
