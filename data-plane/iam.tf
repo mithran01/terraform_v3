@@ -98,3 +98,26 @@ resource "aws_iam_instance_profile" "data_plane_profile" {
 
   role = aws_iam_role.data_plane_role.name
 }
+
+# -----------------------------------------------------------------------------
+# Attach EBS CSI Policy
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+
+  role = aws_iam_role.data_plane_role.name
+
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+# -----------------------------------------------------------------------------
+# Attach EFS CSI Policy
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy_attachment" "efs_csi" {
+
+  role = aws_iam_role.data_plane_role.name
+
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
+}
+
