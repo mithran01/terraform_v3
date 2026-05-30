@@ -78,6 +78,6 @@
   register: ssm_verify
   delegate_to: localhost
 
-- name: Display stored join command
+- name: Show full return structure
   debug:
-    var: ssm_verify.parameter.value
+    var: ssm_verify
