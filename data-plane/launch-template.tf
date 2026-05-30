@@ -11,7 +11,9 @@ resource "aws_launch_template" "data_plane" {
   }
 
   metadata_options {
-    http_tokens = "required"
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
   }
   update_default_version = true
 

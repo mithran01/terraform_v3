@@ -86,13 +86,6 @@
     state: present
     disable_excludes: kubernetes
 
-- name: Configure kubelet cloud provider
-  copy:
-    dest: /etc/sysconfig/kubelet
-    content: |
-      KUBELET_EXTRA_ARGS="--cloud-provider=external"
-
-
 - name: Enable kubelet
   systemd:
     name: kubelet
