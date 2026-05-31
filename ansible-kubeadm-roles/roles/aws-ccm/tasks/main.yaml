@@ -43,7 +43,6 @@
 
         - key: "node.cloudprovider.kubernetes.io/uninitialized"
           operator: "Exists"
-          value: "true"
           effect: "NoSchedule"
 
       args:
