@@ -43,7 +43,9 @@
 
         - key: "node.cloudprovider.kubernetes.io/uninitialized"
           operator: "Exists"
+          value: "true"
           effect: "NoSchedule"
 
       args:
-        cloud-provider: aws
+        - --v=2
+        - --cloud-provider=aws
