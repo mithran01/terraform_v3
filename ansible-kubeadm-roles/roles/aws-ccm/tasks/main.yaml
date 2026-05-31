@@ -49,3 +49,4 @@
         - --v=2
         - --cloud-provider=aws
         - --cluster-name=openemr-prod
+        - --configure-cloud-routes=false
