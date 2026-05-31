@@ -1,0 +1,7 @@
+---
+- name: Install AWS Cloud Controller Manager
+  hosts: controlplane
+  become: true
+
+  roles:
+    - aws-ccm

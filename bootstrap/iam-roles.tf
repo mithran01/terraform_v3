@@ -123,6 +123,65 @@ resource "aws_iam_policy" "ansible_server_policy" {
     ]
   })
 }
+
+# ---------------------------------------------------------
+# IAM POLICY for aws ccm
+# ---------------------------------------------------------
+resource "aws_iam_policy" "aws_ccm_policy" {
+
+  name = "aws-cloud-controller-manager-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeRouteTables",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeTags",
+          "ec2:DescribeNetworkInterfaces"
+        ]
+
+        Resource = "*"
+      },
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeListeners",
+          "elasticloadbalancing:DescribeTags"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}
+# -----------------------------------------------------------------------------
+# Attach ccm policy to kubeadm_role (control plane)
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy_attachment" "aws_ccm_policy_attach" {
+
+  role = aws_iam_role.kubeadm_role.name
+
+  policy_arn = aws_iam_policy.aws_ccm_policy.arn
+}
+
+
 resource "aws_iam_role_policy_attachment" "ansible_attach" {
 
   role       = aws_iam_role.ansible_server_role.name
@@ -148,7 +207,7 @@ resource "aws_iam_role" "kubeadm_role" {
 }
 
 # -----------------------------------------------------------------------------
-# IAM Role -- control plane for {kubeadm} 
+# IAM policy -- control plane for {kubeadm} 
 # -----------------------------------------------------------------------------
 
 resource "aws_iam_policy" "cluster_autoscaler_policy" {

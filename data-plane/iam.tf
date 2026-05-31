@@ -121,3 +121,13 @@ resource "aws_iam_role_policy_attachment" "efs_csi" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
 }
 
+# -----------------------------------------------------------------------------
+# Attach ccm policy to data plane role (data plane)
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy_attachment" "aws_ccm_policy_attach" {
+
+  role = aws_iam_role.data_plane_role.name
+
+  policy_arn = aws_iam_policy.aws_ccm_policy.arn
+}

@@ -1,4 +1,20 @@
 ---
+# ---------------------------------------------------------
+# Configure kubelet for AWS CCM
+# ---------------------------------------------------------
+
+- name: Configure kubelet for external cloud provider
+  copy:
+    dest: /etc/sysconfig/kubelet
+    content: |
+      KUBELET_EXTRA_ARGS="--cloud-provider=external"
+
+- name: Restart kubelet
+  systemd:
+    name: kubelet
+    daemon_reload: true
+    state: restarted
+
 - name: Initialize Kubernetes cluster
   shell: |
     kubeadm init \

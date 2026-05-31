@@ -1,0 +1,45 @@
+---
+# ---------------------------------------------------------
+# Add AWS CCM Helm Repository
+# ---------------------------------------------------------
+
+- name: Add AWS CCM Helm repository
+  kubernetes.core.helm_repository:
+    name: aws-cloud-controller-manager
+    repo_url: https://kubernetes.github.io/cloud-provider-aws
+    kubeconfig: /etc/kubernetes/admin.conf
+
+# ---------------------------------------------------------
+# Update Helm repositories
+# ---------------------------------------------------------
+
+- name: Update Helm repositories
+  command: helm repo update
+
+# ---------------------------------------------------------
+# Install AWS CCM
+# ---------------------------------------------------------
+
+- name: Install AWS Cloud Controller Manager
+  kubernetes.core.helm:
+    name: aws-cloud-controller-manager
+    chart_ref: aws-cloud-controller-manager/aws-cloud-controller-manager
+    release_namespace: kube-system
+    create_namespace: false
+
+    kubeconfig: /etc/kubernetes/admin.conf
+
+    values:
+
+      region: us-east-1
+
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+      args:
+        cloud-provider: aws

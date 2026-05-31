@@ -2,6 +2,8 @@ ANSIBLE_ROLES_PATH=./roles ansible-playbook -i /etc/ansible/hosts playbooks/kube
 
 ANSIBLE_ROLES_PATH=./roles ansible-playbook -i /etc/ansible/hosts playbooks/helm.yaml
 
+ANSIBLE_ROLES_PATH=./roles ansible-playbook -i /etc/ansible/hosts playbooks/aws-ccm.yaml
+
 ANSIBLE_ROLES_PATH=./roles ansible-playbook -i /etc/ansible/hosts playbooks/metrics-server.yaml
 
 ANSIBLE_ROLES_PATH=./roles ansible-playbook -i /etc/ansible/hosts playbooks/cluster-autoscaler.yaml
