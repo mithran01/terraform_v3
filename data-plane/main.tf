@@ -48,7 +48,7 @@ resource "aws_autoscaling_group" "data_plane_asg" {
   tag {
     key                 = "k8s.io/cluster-autoscaler/openemr-prod"
     value               = "owned"
-    propagate_at_launch = false
+    propagate_at_launch = true
   }
 
   lifecycle {

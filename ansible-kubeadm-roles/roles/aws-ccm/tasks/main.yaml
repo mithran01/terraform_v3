@@ -48,3 +48,4 @@
       args:
         - --v=2
         - --cloud-provider=aws
+        - --cluster-name=openemr-prod
