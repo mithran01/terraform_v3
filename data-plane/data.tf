@@ -52,3 +52,7 @@ data "aws_ami" "rocky_linux" {
 data "aws_key_pair" "existing_key_2" {
   key_name = "demov2"
 }
+# already created in bootstrap pipeline
+data "aws_iam_policy" "aws_ccm_policy" {
+  name = "aws-cloud-controller-manager-policy"
+}
