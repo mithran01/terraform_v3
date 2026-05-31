@@ -11,9 +11,10 @@ resource "aws_instance" "control_plane" {
 
 
   tags = {
-    Name       = "control-plane-${count.index}"
-    Role       = "control-plane"
-    Managed_by = "Terraform-user"
+    Name                                 = "control-plane-${count.index}"
+    Role                                 = "control-plane"
+    Managed_by                           = "Terraform-user"
+    "kubernetes.io/cluster/openemr-prod" = "owned"
   }
 }
 

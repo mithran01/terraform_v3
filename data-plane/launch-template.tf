@@ -43,9 +43,10 @@ resource "aws_launch_template" "data_plane" {
     resource_type = "instance"
     tags = {
       #Name = "swarm-worker"
-      Role       = "data-plane"
-      Name       = "data-plane-"
-      Managed_by = "Terraform-user"
+      Role                                 = "data-plane"
+      Name                                 = "data-plane-"
+      Managed_by                           = "Terraform-user"
+      "kubernetes.io/cluster/openemr-prod" = "owned"
     }
   }
 }
