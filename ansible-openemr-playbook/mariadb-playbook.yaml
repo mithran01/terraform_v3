@@ -1,9 +1,10 @@
 ---
-- name: Deploy MariaDB on Kubernetes
+- name: Deploy MariaDB StatefulSet on Kubernetes
   hosts: controlplane
   become: true
 
   vars:
+
     namespace: openemr
 
     mariadb_image: mariadb:11.4
@@ -17,11 +18,11 @@
     mariadb_resources:
       limits:
         memory: 2Gi
-        cpu: 1
+        cpu: "1"
 
       requests:
         memory: 1Gi
-        cpu: 500m
+        cpu: "500m"
 
   tasks:
 
@@ -30,8 +31,7 @@
     # -------------------------------------------------------------------------
 
     - name: Create namespace
-      shell: |
-        kubectl create namespace {{ namespace }}
+      shell: kubectl create namespace {{ namespace }}
       failed_when: false
       changed_when: false
       environment:
@@ -55,10 +55,10 @@
         mariadb_first_install: "{{ secret_check.rc != 0 }}"
 
     # -------------------------------------------------------------------------
-    # Generate passwords on first install
+    # Generate passwords only on first install
     # -------------------------------------------------------------------------
 
-    - name: Generate passwords only on first install
+    - name: Generate database passwords
       set_fact:
         mariadb_root_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=32, chars=['ascii_letters','digits']) }}"
         mariadb_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=32, chars=['ascii_letters','digits']) }}"
@@ -70,7 +70,8 @@
 
     - name: Get existing database password
       shell: |
-        kubectl get secret mariadb-secret -n {{ namespace }} \
+        kubectl get secret mariadb-secret \
+        -n {{ namespace }} \
         -o jsonpath="{.data.database-password}" | base64 -d
       register: existing_db_password
       when: not mariadb_first_install
@@ -79,7 +80,8 @@
 
     - name: Get existing root password
       shell: |
-        kubectl get secret mariadb-secret -n {{ namespace }} \
+        kubectl get secret mariadb-secret \
+        -n {{ namespace }} \
         -o jsonpath="{.data.database-root-password}" | base64 -d
       register: existing_root_password
       when: not mariadb_first_install
@@ -93,30 +95,30 @@
       when: not mariadb_first_install
 
     # -------------------------------------------------------------------------
-    # Show generated credentials only once
+    # Display credentials only on first install
     # -------------------------------------------------------------------------
 
-    - name: Show generated MariaDB credentials
+    - name: Show generated credentials
       debug:
         msg:
-          - "======================================="
+          - "================================="
           - "MariaDB Credentials"
-          - "======================================="
+          - "================================="
           - "Database: {{ mariadb_database }}"
           - "User: {{ mariadb_user }}"
           - "Password: {{ mariadb_password }}"
           - "Root Password: {{ mariadb_root_password }}"
-          - "======================================="
+          - "================================="
       when: mariadb_first_install
 
     # -------------------------------------------------------------------------
-    # Create Secret YAML
+    # Create Secret
     # -------------------------------------------------------------------------
 
     - name: Create MariaDB Secret YAML
       copy:
         dest: /tmp/mariadb-secret.yaml
-        mode: '0600'
+        mode: "0600"
         content: |
           apiVersion: v1
           kind: Secret
@@ -134,83 +136,134 @@
             database-root-password: "{{ mariadb_root_password }}"
 
     - name: Apply MariaDB Secret
-      shell: |
-        kubectl apply -f /tmp/mariadb-secret.yaml
+      shell: kubectl apply -f /tmp/mariadb-secret.yaml
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
 
     # -------------------------------------------------------------------------
-    # PVC
+    # Headless Service
     # -------------------------------------------------------------------------
 
-    - name: Create MariaDB PVC YAML
+    - name: Create MariaDB Headless Service YAML
       copy:
-        dest: /tmp/mariadb-pvc.yaml
+        dest: /tmp/mariadb-headless.yaml
         content: |
           apiVersion: v1
-          kind: PersistentVolumeClaim
-
-          metadata:
-            name: mariadb-data
-            namespace: {{ namespace }}
-
-          spec:
-            accessModes:
-              - ReadWriteOnce
-
-            storageClassName: {{ storage_class }}
-
-            resources:
-              requests:
-                storage: {{ db_storage_size }}
-
-    - name: Apply MariaDB PVC
-      shell: |
-        kubectl apply -f /tmp/mariadb-pvc.yaml
-      environment:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-
-    # -------------------------------------------------------------------------
-    # Deployment
-    # -------------------------------------------------------------------------
-
-    - name: Create MariaDB Deployment YAML
-      copy:
-        dest: /tmp/mariadb-deployment.yaml
-        content: |
-          apiVersion: apps/v1
-          kind: Deployment
+          kind: Service
 
           metadata:
             name: mariadb
             namespace: {{ namespace }}
 
           spec:
-            replicas: 1
 
-            strategy:
-              type: Recreate
+            clusterIP: None
+
+            selector:
+              app: mariadb
+
+            ports:
+              - name: mysql
+                port: 3306
+                targetPort: 3306
+
+    - name: Apply MariaDB Headless Service
+      shell: kubectl apply -f /tmp/mariadb-headless.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    # -------------------------------------------------------------------------
+    # ClusterIP Service
+    # -------------------------------------------------------------------------
+
+    - name: Create MariaDB ClusterIP Service YAML
+      copy:
+        dest: /tmp/mariadb-clusterip.yaml
+        content: |
+          apiVersion: v1
+          kind: Service
+
+          metadata:
+            name: mariadb-clusterip
+            namespace: {{ namespace }}
+
+          spec:
+
+            selector:
+              app: mariadb
+
+            ports:
+              - name: mysql
+                port: 3306
+                targetPort: 3306
+
+            type: ClusterIP
+
+    - name: Apply MariaDB ClusterIP Service
+      shell: kubectl apply -f /tmp/mariadb-clusterip.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    # -------------------------------------------------------------------------
+    # StatefulSet
+    # -------------------------------------------------------------------------
+
+    - name: Create MariaDB StatefulSet YAML
+      copy:
+        dest: /tmp/mariadb-statefulset.yaml
+        content: |
+          apiVersion: apps/v1
+          kind: StatefulSet
+
+          metadata:
+            name: mariadb
+            namespace: {{ namespace }}
+
+          spec:
+
+            serviceName: mariadb
+
+            podManagementPolicy: OrderedReady
+
+            replicas: 1
 
             selector:
               matchLabels:
                 app: mariadb
 
             template:
+
               metadata:
                 labels:
                   app: mariadb
 
               spec:
+
+                terminationGracePeriodSeconds: 60
+
+                nodeSelector:
+                  role: db
+
+                tolerations:
+                  - key: dedicated
+                    operator: Equal
+                    value: db
+                    effect: NoSchedule
+
                 containers:
+
                   - name: mariadb
 
                     image: {{ mariadb_image }}
+
+                    imagePullPolicy: IfNotPresent
 
                     ports:
                       - containerPort: 3306
                         name: mysql
 
                     env:
+
                       - name: MYSQL_ROOT_PASSWORD
                         valueFrom:
                           secretKeyRef:
@@ -238,17 +291,17 @@
                     volumeMounts:
                       - name: mariadb-data
                         mountPath: /var/lib/mysql
-                    
+
                     livenessProbe:
                       tcpSocket:
                         port: 3306
-                      initialDelaySeconds: 30
-                      periodSeconds: 10
-                    
+                      initialDelaySeconds: 60
+                      periodSeconds: 20
+
                     readinessProbe:
                       tcpSocket:
                         port: 3306
-                      initialDelaySeconds: 5
+                      initialDelaySeconds: 20
                       periodSeconds: 10
 
                     resources:
@@ -260,71 +313,77 @@
                         memory: "{{ mariadb_resources.limits.memory }}"
                         cpu: "{{ mariadb_resources.limits.cpu }}"
 
-                volumes:
-                  - name: mariadb-data
-                    persistentVolumeClaim:
-                      claimName: mariadb-data
+            volumeClaimTemplates:
 
-    - name: Apply MariaDB Deployment
-      shell: |
-        kubectl apply -f /tmp/mariadb-deployment.yaml
+              - metadata:
+                  name: mariadb-data
+
+                spec:
+
+                  accessModes:
+                    - ReadWriteOnce
+
+                  storageClassName: {{ storage_class }}
+
+                  resources:
+                    requests:
+                      storage: {{ db_storage_size }}
+
+    - name: Apply MariaDB StatefulSet
+      shell: kubectl apply -f /tmp/mariadb-statefulset.yaml
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
 
     # -------------------------------------------------------------------------
-    # Service
+    # Wait
     # -------------------------------------------------------------------------
 
-    - name: Create MariaDB Service YAML
-      copy:
-        dest: /tmp/mariadb-service.yaml
-        content: |
-          apiVersion: v1
-          kind: Service
-
-          metadata:
-            name: mariadb
-            namespace: {{ namespace }}
-
-          spec:
-            selector:
-              app: mariadb
-
-            ports:
-              - port: 3306
-                targetPort: 3306
-                name: mysql
-
-            type: ClusterIP
-
-    - name: Apply MariaDB Service
-      shell: |
-        kubectl apply -f /tmp/mariadb-service.yaml
-      environment:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-
-    # -------------------------------------------------------------------------
-    # Wait for pod
-    # -------------------------------------------------------------------------
-
-    - name: Wait for MariaDB pod to become ready
+    - name: Wait for MariaDB Pod
       shell: |
         kubectl wait \
-          --for=condition=Ready \
-          pod \
-          -l app=mariadb \
-          -n {{ namespace }} \
-          --timeout=300s
+        --for=condition=Ready \
+        pod/mariadb-0 \
+        -n {{ namespace }} \
+        --timeout=600s
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
 
-    - name: Show MariaDB pods
-      shell: |
-        kubectl get pods -n {{ namespace }}
+    # -------------------------------------------------------------------------
+    # Verification
+    # -------------------------------------------------------------------------
+
+    - name: Show StatefulSet
+      shell: kubectl get sts -n {{ namespace }}
+      register: mariadb_sts
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - debug:
+        var: mariadb_sts.stdout
+
+    - name: Show PVC
+      shell: kubectl get pvc -n {{ namespace }}
+      register: mariadb_pvc
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - debug:
+        var: mariadb_pvc.stdout
+
+    - name: Show PV
+      shell: kubectl get pv
+      register: mariadb_pv
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - debug:
+        var: mariadb_pv.stdout
+
+    - name: Show Pod Placement
+      shell: kubectl get pods -n {{ namespace }} -o wide
       register: mariadb_pods
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
 
-    - name: Display pod status
-      debug:
+    - debug:
         var: mariadb_pods.stdout
