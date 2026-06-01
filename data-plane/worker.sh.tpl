@@ -16,9 +16,25 @@ echo "================================================="
 # HOSTNAME
 # ------------------------------------------------------------------
 
-HOSTNAME=$(curl -s http://169.254.169.254/latest/meta-data/local-hostname)
+TOKEN=$(curl -X PUT \
+http://169.254.169.254/latest/api/token \
+-H "X-aws-ec2-metadata-token-ttl-seconds: 21600" -s)
+
+HOSTNAME=$(curl -s \
+-H "X-aws-ec2-metadata-token:$TOKEN" \
+http://169.254.169.254/latest/meta-data/local-hostname)
+
+echo "Detected hostname: $HOSTNAME"
+
+if [ -z "$HOSTNAME" ]; then
+  echo "ERROR: Failed to retrieve hostname from IMDS"
+  exit 1
+fi
+
+echo "Detected hostname: $HOSTNAME"
 
 hostnamectl set-hostname "$HOSTNAME"
+echo "$HOSTNAME" > /etc/hostname
 
 # ------------------------------------------------------------------
 # DISABLE SWAP
@@ -124,7 +140,7 @@ dnf install -y \
 # ------------------------------------------------------------------
 
 cat <<EOF > /etc/sysconfig/kubelet
-KUBELET_EXTRA_ARGS="--cloud-provider=external --node-labels=node-type=data-plane,environment=prod,role=worker"
+KUBELET_EXTRA_ARGS="--cloud-provider=external --hostname-override=${HOSTNAME} --node-labels=node-type=data-plane,environment=prod,role=worker"
 EOF
 
 systemctl daemon-reload
