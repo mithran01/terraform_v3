@@ -26,15 +26,15 @@ http://169.254.169.254/latest/meta-data/local-hostname)
 
 echo "Detected hostname: $HOSTNAME"
 
-if [ -z "$HOSTNAME" ]; then
+if [ -z "$$HOSTNAME" ]; then
   echo "ERROR: Failed to retrieve hostname from IMDS"
   exit 1
 fi
 
-echo "Detected hostname: $HOSTNAME"
+echo "Detected hostname: $$HOSTNAME"
 
-hostnamectl set-hostname "$HOSTNAME"
-echo "$HOSTNAME" > /etc/hostname
+hostnamectl set-hostname "$$HOSTNAME"
+echo "$$HOSTNAME" > /etc/hostname
 
 # ------------------------------------------------------------------
 # DISABLE SWAP
