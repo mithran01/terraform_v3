@@ -140,7 +140,7 @@ dnf install -y \
 # ------------------------------------------------------------------
 
 cat <<EOF > /etc/sysconfig/kubelet
-KUBELET_EXTRA_ARGS="--cloud-provider=external --hostname-override=${HOSTNAME} --node-labels=node-type=data-plane,environment=prod,role=worker"
+KUBELET_EXTRA_ARGS="--cloud-provider=external --hostname-override=$${HOSTNAME} --node-labels=node-type=data-plane,environment=prod,role=worker"
 EOF
 
 systemctl daemon-reload
