@@ -53,7 +53,7 @@ resource "aws_iam_role_policy_attachment" "ssm_attach_1" {
 
   role = aws_iam_role.db_plane_role.name
 
-  policy_arn = aws_iam_policy.ssm_join_policy.arn
+  policy_arn = data.aws_iam_policy.ssm_join_policy.arn
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_attach_2" {
