@@ -39,6 +39,9 @@
 
       rbac:
         create: true
+      
+      image:
+        tag: v1.30.0
 
       extraArgs:
         skip-nodes-with-local-storage: "false"

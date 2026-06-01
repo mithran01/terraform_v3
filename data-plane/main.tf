@@ -42,7 +42,7 @@ resource "aws_autoscaling_group" "data_plane_asg" {
   tag {
     key                 = "k8s.io/cluster-autoscaler/enabled"
     value               = "true"
-    propagate_at_launch = false
+    propagate_at_launch = true
   }
 
   tag {
