@@ -47,32 +47,6 @@ resource "aws_iam_role" "db_plane_role" {
 }
 
 # ---------------------------------------------------------
-#  step 3: IAM POLICY - db-plane
-# ---------------------------------------------------------
-resource "aws_iam_policy" "ssm_join_policy" {
-
-  name = "ssm-join-policy"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-
-    Statement = [
-      {
-        Effect = "Allow"
-
-        Action = [
-          "ssm:GetParameter"
-        ]
-
-        Resource = [
-          "*"
-        ]
-      }
-    ]
-  })
-}
-
-# ---------------------------------------------------------
 # step 4: IAM ROLE POLICY ATTACHMENT db plane
 # ---------------------------------------------------------
 resource "aws_iam_role_policy_attachment" "ssm_attach_1" {

@@ -60,3 +60,7 @@ data "aws_key_pair" "existing_key_2" {
 data "aws_iam_policy" "aws_ccm_policy" {
   name = "aws-cloud-controller-manager-policy"
 }
+# already created in data-plane pipeline
+data "aws_iam_policy" "ssm_join_policy" {
+  name = "ssm-join-policy"
+}
