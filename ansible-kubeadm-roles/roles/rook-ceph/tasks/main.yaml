@@ -1,0 +1,166 @@
+---
+###############################################################################
+# Variables
+###############################################################################
+
+- name: Set Rook-Ceph Variables
+  ansible.builtin.set_fact:
+    rook_namespace: rook-ceph
+    rook_repo: https://charts.rook.io/release
+    rook_chart: rook-ceph
+    rook_release: rook-ceph
+    rook_chart_version: "v1.15.6"
+
+###############################################################################
+# Create Namespace
+###############################################################################
+
+- name: Create Rook Namespace
+  kubernetes.core.k8s:
+    kubeconfig: /etc/kubernetes/admin.conf
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ rook_namespace }}"
+
+###############################################################################
+# Add Helm Repository
+###############################################################################
+
+- name: Add Rook Helm Repository
+  kubernetes.core.helm_repository:
+    name: rook-release
+    repo_url: "{{ rook_repo }}"
+
+###############################################################################
+# Update Helm Repository
+###############################################################################
+
+- name: Update Helm Repository
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+###############################################################################
+# Install Rook Operator
+###############################################################################
+
+- name: Install Rook-Ceph Operator
+  kubernetes.core.helm:
+    kubeconfig: /etc/kubernetes/admin.conf
+    name: "{{ rook_release }}"
+    chart_ref: rook-release/{{ rook_chart }}
+    chart_version: "{{ rook_chart_version }}"
+    release_namespace: "{{ rook_namespace }}"
+    create_namespace: false
+    wait: true
+    wait_timeout: 15m
+    values:
+
+      crds:
+        enabled: true
+
+      csi:
+        enableRbdDriver: true
+        enableCephfsDriver: true
+
+      monitoring:
+        enabled: true
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+###############################################################################
+# Wait for Operator Deployment
+###############################################################################
+
+- name: Wait for Rook Operator Deployment
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/kubernetes/admin.conf
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ rook_namespace }}"
+    name: rook-ceph-operator
+  register: rook_operator
+  retries: 30
+  delay: 20
+  until:
+    - rook_operator.resources | length > 0
+    - rook_operator.resources[0].status.readyReplicas is defined
+    - rook_operator.resources[0].status.readyReplicas | int >= 1
+
+###############################################################################
+# Wait for Operator Pod
+###############################################################################
+
+- name: Wait for Operator Pod
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/kubernetes/admin.conf
+    api_version: v1
+    kind: Pod
+    namespace: "{{ rook_namespace }}"
+    label_selectors:
+      - app=rook-ceph-operator
+  register: operator_pods
+  retries: 30
+  delay: 20
+  until:
+    - operator_pods.resources | length > 0
+    - operator_pods.resources[0].status.phase == "Running"
+
+###############################################################################
+# Wait for CSI RBD Provisioner
+###############################################################################
+
+- name: Wait for CSI RBD Provisioner
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/kubernetes/admin.conf
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ rook_namespace }}"
+    name: rook-csi-rbd-provisioner
+  register: rbd_provisioner
+  retries: 30
+  delay: 20
+  until:
+    - rbd_provisioner.resources | length > 0
+    - rbd_provisioner.resources[0].status.readyReplicas is defined
+    - rbd_provisioner.resources[0].status.readyReplicas | int >= 1
+
+###############################################################################
+# Wait for CSI CephFS Provisioner
+###############################################################################
+
+- name: Wait for CSI CephFS Provisioner
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/kubernetes/admin.conf
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ rook_namespace }}"
+    name: rook-csi-cephfs-provisioner
+  register: cephfs_provisioner
+  retries: 30
+  delay: 20
+  until:
+    - cephfs_provisioner.resources | length > 0
+    - cephfs_provisioner.resources[0].status.readyReplicas is defined
+    - cephfs_provisioner.resources[0].status.readyReplicas | int >= 1
+
+###############################################################################
+# Display Installation Status
+###############################################################################
+
+- name: Display Operator Status
+  ansible.builtin.debug:
+    msg:
+      - "Rook-Ceph Operator Installed Successfully"
+      - "Namespace : {{ rook_namespace }}"
+      - "Release   : {{ rook_release }}"
+      - "Chart     : {{ rook_chart }}"

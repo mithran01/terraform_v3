@@ -1,0 +1,7 @@
+---
+- name: Install Rook Ceph
+  hosts: control_plane
+  become: true
+
+  roles:
+    - rook-ceph
