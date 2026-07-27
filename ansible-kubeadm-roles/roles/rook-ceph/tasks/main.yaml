@@ -9,7 +9,7 @@
     rook_repo: https://charts.rook.io/release
     rook_chart: rook-ceph
     rook_release: rook-ceph
-    rook_chart_version: "v1.15.6"
+    rook_chart_version: "v1.15.9"
 
 ###############################################################################
 # Create Rook Namespace
@@ -76,6 +76,186 @@
       --timeout=600s
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Deploy CephCluster
+###############################################################################
+
+- name: Create CephCluster Manifest
+  ansible.builtin.copy:
+    dest: /tmp/cephcluster.yaml
+    mode: "0644"
+    content: |
+      apiVersion: ceph.rook.io/v1
+      kind: CephCluster
+      metadata:
+        name: rook-ceph
+        namespace: rook-ceph
+      spec:
+        cephVersion:
+          image: quay.io/ceph/ceph:v19.2.3
+
+        dataDirHostPath: /var/lib/rook
+
+        skipUpgradeChecks: false
+
+        waitTimeoutForHealthyOSDInMinutes: 10
+
+        mon:
+          count: 3
+          allowMultiplePerNode: false
+
+        mgr:
+          count: 2
+          allowMultiplePerNode: false
+
+        dashboard:
+          enabled: true
+
+        healthCheck:
+          daemonHealth:
+            mon:
+              interval: 45s
+
+            osd:
+              interval: 60s
+
+            status:
+              interval: 60s
+
+        monitoring:
+          enabled: false
+
+        network:
+          provider: host
+
+        crashCollector:
+          disable: false
+
+        cleanupPolicy:
+          confirmation: ""
+
+        storage:
+          useAllNodes: true
+          useAllDevices: false
+
+          storageClassDeviceSets:
+            - name: ebs-device-set
+
+              count: 3
+
+              portable: true
+
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+
+
+              tuneDeviceClass: true
+
+              encrypted: false
+
+              placement: {}
+
+              preparePlacement: {}
+
+              volumeClaimTemplates:
+                - metadata:
+                    name: data
+
+                  spec:
+                    storageClassName: gp3
+
+                    accessModes:
+                      - ReadWriteOnce
+
+                    volumeMode: Block
+
+                    resources:
+                      requests:
+                        storage: 100Gi
+
+###############################################################################
+# Apply CephCluster
+###############################################################################
+
+- name: Apply CephCluster
+  ansible.builtin.command:
+    cmd: kubectl apply -f /tmp/cephcluster.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for CephCluster Creation
+###############################################################################
+
+- name: Wait for CephCluster Ready
+  ansible.builtin.shell: |
+    kubectl wait \
+      --for=jsonpath='{.status.state}'=Created \
+      cephcluster/rook-ceph \
+      -n rook-ceph \
+      --timeout=1800s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for MON Pods
+###############################################################################
+
+- name: Wait for MON Pods
+  ansible.builtin.shell: |
+    kubectl wait \
+      --for=condition=Ready pod \
+      -l app=rook-ceph-mon \
+      -n rook-ceph \
+      --timeout=900s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for MGR Pods
+###############################################################################
+
+- name: Wait for MGR Pods
+  ansible.builtin.shell: |
+    kubectl wait \
+      --for=condition=Ready pod \
+      -l app=rook-ceph-mgr \
+      -n rook-ceph \
+      --timeout=900s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for OSD Pods
+###############################################################################
+
+- name: Wait for OSD Pods
+  ansible.builtin.shell: |
+    kubectl wait \
+      --for=condition=Ready pod \
+      -l app=rook-ceph-osd \
+      -n rook-ceph \
+      --timeout=1800s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Verify CephCluster
+###############################################################################
+
+- name: Get CephCluster Status
+  ansible.builtin.command:
+    cmd: kubectl get cephcluster -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_cluster
+
+- name: Display CephCluster
+  ansible.builtin.debug:
+    var: ceph_cluster.stdout_lines
 
 ###############################################################################
 # Wait for CSI RBD Provisioner
