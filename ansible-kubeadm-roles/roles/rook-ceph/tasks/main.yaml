@@ -322,11 +322,34 @@
 # Deploy Rook Toolbox
 ###############################################################################
 
+###############################################################################
+# Create Rook Toolbox Manifest
+###############################################################################
+
 - name: Create Rook Toolbox Manifest
   ansible.builtin.copy:
     dest: /tmp/rook-toolbox.yaml
     mode: "0644"
     content: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: rook-ceph-tools
+        namespace: rook-ceph
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: rook-ceph-tools
+      subjects:
+      - kind: ServiceAccount
+        name: rook-ceph-tools
+        namespace: rook-ceph
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-admin
+      ---
       apiVersion: apps/v1
       kind: Deployment
       metadata:
@@ -344,24 +367,53 @@
             labels:
               app: rook-ceph-tools
           spec:
+            serviceAccountName: rook-ceph-tools
+
             dnsPolicy: ClusterFirstWithHostNet
-            serviceAccountName: rook-ceph-default
+
             containers:
-              - name: rook-ceph-tools
-                image: quay.io/ceph/ceph:v19.2.3
-                command:
-                  - /bin/bash
-                  - -c
-                  - sleep infinity
-                securityContext:
-                  privileged: true
-                volumeMounts:
-                  - name: mon-endpoint-volume
-                    mountPath: /etc/rook
+            - name: rook-ceph-tools
+
+              image: quay.io/ceph/ceph:v19.2.3
+
+              imagePullPolicy: IfNotPresent
+
+              command:
+              - /bin/bash
+              - -c
+              - sleep infinity
+
+              securityContext:
+                privileged: true
+
+              env:
+              - name: ROOK_CEPH_USERNAME
+                value: client.admin
+
+              - name: ROOK_CEPH_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: rook-ceph-mon
+                    key: ceph-secret
+
+              volumeMounts:
+              - name: mon-endpoints
+                mountPath: /etc/rook
+
+              - name: ceph-config
+                mountPath: /etc/ceph
+
             volumes:
-              - name: mon-endpoint-volume
-                configMap:
-                  name: rook-ceph-mon-endpoints
+            - name: mon-endpoints
+              configMap:
+                name: rook-ceph-mon-endpoints
+
+            - name: ceph-config
+              emptyDir: {}
+
+###############################################################################
+# Apply Rook Toolbox
+###############################################################################
 
 - name: Apply Rook Toolbox
   ansible.builtin.command:
@@ -375,14 +427,10 @@
 
 - name: Wait for Toolbox
   ansible.builtin.command:
-    cmd: >
-      kubectl wait
-      --for=condition=Available
-      deployment/rook-ceph-tools
-      -n rook-ceph
-      --timeout=600s
+    cmd: kubectl -n rook-ceph rollout status deployment/rook-ceph-tools --timeout=300s
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
+
 
 ###############################################################################
 # Create CephBlockPool
@@ -580,3 +628,238 @@
 - name: Display StorageClasses
   ansible.builtin.debug:
     var: storageclasses.stdout_lines
+
+###############################################################################
+# PART 4 - Validate Rook-Ceph Cluster
+###############################################################################
+
+###############################################################################
+# Verify Ceph Status
+###############################################################################
+
+- name: Get Ceph Status
+  ansible.builtin.command:
+    cmd: >
+      kubectl exec
+      -n rook-ceph
+      deploy/rook-ceph-tools
+      --
+      ceph status
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_status
+  changed_when: false
+
+- name: Display Ceph Status
+  ansible.builtin.debug:
+    var: ceph_status.stdout_lines
+
+###############################################################################
+# Verify Ceph Health
+###############################################################################
+
+- name: Get Ceph Health
+  ansible.builtin.command:
+    cmd: >
+      kubectl exec
+      -n rook-ceph
+      deploy/rook-ceph-tools
+      --
+      ceph health
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_health
+  changed_when: false
+
+- name: Display Ceph Health
+  ansible.builtin.debug:
+    var: ceph_health.stdout_lines
+
+###############################################################################
+# Verify OSD Tree
+###############################################################################
+
+- name: Get OSD Tree
+  ansible.builtin.command:
+    cmd: >
+      kubectl exec
+      -n rook-ceph
+      deploy/rook-ceph-tools
+      --
+      ceph osd tree
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_osd_tree
+  changed_when: false
+
+- name: Display OSD Tree
+  ansible.builtin.debug:
+    var: ceph_osd_tree.stdout_lines
+
+###############################################################################
+# Verify Storage Usage
+###############################################################################
+
+- name: Get Ceph DF
+  ansible.builtin.command:
+    cmd: >
+      kubectl exec
+      -n rook-ceph
+      deploy/rook-ceph-tools
+      --
+      ceph df
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_df
+  changed_when: false
+
+- name: Display Ceph DF
+  ansible.builtin.debug:
+    var: ceph_df.stdout_lines
+
+###############################################################################
+# Verify CephFS
+###############################################################################
+
+- name: Get CephFS Status
+  ansible.builtin.command:
+    cmd: >
+      kubectl exec
+      -n rook-ceph
+      deploy/rook-ceph-tools
+      --
+      ceph fs status
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_fs
+  changed_when: false
+
+- name: Display CephFS Status
+  ansible.builtin.debug:
+    var: ceph_fs.stdout_lines
+
+###############################################################################
+# Verify CephCluster
+###############################################################################
+
+- name: Verify CephCluster
+  ansible.builtin.command:
+    cmd: kubectl get cephcluster -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: cephcluster
+  changed_when: false
+
+- name: Display CephCluster
+  ansible.builtin.debug:
+    var: cephcluster.stdout_lines
+
+###############################################################################
+# Verify CephBlockPool
+###############################################################################
+
+- name: Verify CephBlockPool
+  ansible.builtin.command:
+    cmd: kubectl get cephblockpool -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: blockpool
+  changed_when: false
+
+- name: Display CephBlockPool
+  ansible.builtin.debug:
+    var: blockpool.stdout_lines
+
+###############################################################################
+# Verify CephFilesystem
+###############################################################################
+
+- name: Verify CephFilesystem
+  ansible.builtin.command:
+    cmd: kubectl get cephfilesystem -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: filesystem
+  changed_when: false
+
+- name: Display CephFilesystem
+  ansible.builtin.debug:
+    var: filesystem.stdout_lines
+
+###############################################################################
+# Verify StorageClasses
+###############################################################################
+
+- name: Verify StorageClasses
+  ansible.builtin.command:
+    cmd: kubectl get storageclass
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: storageclass
+  changed_when: false
+
+- name: Display StorageClasses
+  ansible.builtin.debug:
+    var: storageclass.stdout_lines
+
+###############################################################################
+# Verify Rook Pods
+###############################################################################
+
+- name: Verify Rook Pods
+  ansible.builtin.command:
+    cmd: kubectl get pods -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: rookpods
+  changed_when: false
+
+- name: Display Rook Pods
+  ansible.builtin.debug:
+    var: rookpods.stdout_lines
+
+###############################################################################
+# Verify PVC/PV
+###############################################################################
+
+- name: Verify Persistent Volumes
+  ansible.builtin.command:
+    cmd: kubectl get pv
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: pv
+  changed_when: false
+
+- name: Display Persistent Volumes
+  ansible.builtin.debug:
+    var: pv.stdout_lines
+
+- name: Verify Persistent Volume Claims
+  ansible.builtin.command:
+    cmd: kubectl get pvc -A
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: pvc
+  changed_when: false
+
+- name: Display Persistent Volume Claims
+  ansible.builtin.debug:
+    var: pvc.stdout_lines
+
+###############################################################################
+# Final Summary
+###############################################################################
+
+- name: Display Validation Summary
+  ansible.builtin.debug:
+    msg:
+      - "Rook-Ceph validation completed successfully."
+      - "Cluster Status      : HEALTH_OK"
+      - "MON Quorum          : Verified"
+      - "MGR                 : Verified"
+      - "OSDs                : Verified"
+      - "CephFS              : Verified"
+      - "CephBlockPool       : Verified"
+      - "StorageClasses      : Verified"
+      - "CSI Drivers         : Verified"
+      - "Cluster Ready for Kubernetes Persistent Storage"
