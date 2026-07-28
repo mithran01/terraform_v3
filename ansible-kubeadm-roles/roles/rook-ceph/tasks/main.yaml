@@ -238,7 +238,7 @@
       --for=condition=Ready pod \
       -l app=rook-ceph-osd \
       -n rook-ceph \
-      --timeout=1800s
+      --timeout=1200s
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
