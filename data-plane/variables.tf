@@ -13,5 +13,5 @@ variable "min_size" {
 
 variable "max_size" {
   type    = number
-  default = 5
+  default = 3
 }
