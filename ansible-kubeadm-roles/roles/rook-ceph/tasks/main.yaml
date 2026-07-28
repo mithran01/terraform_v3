@@ -266,7 +266,7 @@
     cmd: >
       kubectl wait
       --for=condition=Available
-      deployment/rook-csi-rbd-provisioner
+      deployment/csi-rbdplugin-provisioner
       -n {{ rook_namespace }}
       --timeout=600s
   environment:
@@ -281,7 +281,7 @@
     cmd: >
       kubectl wait
       --for=condition=Available
-      deployment/rook-csi-cephfs-provisioner
+      deployment/csi-cephfsplugin-provisioner
       -n {{ rook_namespace }}
       --timeout=600s
   environment:
