@@ -1,8 +1,0 @@
----
-- name: Install Rook Ceph Part 3
-  hosts: controlplane
-  become: true
-
-  roles:
-    - role: rook-ceph
-      tasks_from: part3
