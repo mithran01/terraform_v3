@@ -318,7 +318,11 @@
       - "Version    : {{ rook_chart_version }}"
 
 # part 3
-- name: Download official toolbox manifest
+###############################################################################
+# Download Official Rook Toolbox Manifest
+###############################################################################
+
+- name: Download Official Rook Toolbox Manifest
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/rook/rook/v1.15.9/deploy/examples/toolbox.yaml
     dest: /tmp/toolbox.yaml
@@ -331,20 +335,39 @@
 
 - name: Apply Rook Toolbox
   ansible.builtin.command:
-    cmd: kubectl apply -f /tmp/rook-toolbox.yaml
+    cmd: kubectl apply -f /tmp/toolbox.yaml
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
 ###############################################################################
-# Wait for Toolbox
+# Wait for Toolbox Deployment
 ###############################################################################
 
-- name: Wait for Toolbox
+- name: Wait for Toolbox Deployment
   ansible.builtin.command:
-    cmd: kubectl -n rook-ceph rollout status deployment/rook-ceph-tools --timeout=300s
+    cmd: >
+      kubectl rollout status
+      deployment/rook-ceph-tools
+      -n rook-ceph
+      --timeout=300s
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
+###############################################################################
+# Wait Until Toolbox Can Access Ceph
+###############################################################################
+
+- name: Wait Until Toolbox Can Access Ceph
+  ansible.builtin.shell: |
+    kubectl exec -n rook-ceph deploy/rook-ceph-tools -- \
+    ceph status >/dev/null 2>&1
+  register: ceph_ready
+  retries: 30
+  delay: 5
+  until: ceph_ready.rc == 0
+  changed_when: false
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
 
 ###############################################################################
 # Create CephBlockPool
