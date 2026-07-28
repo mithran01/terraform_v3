@@ -1,0 +1,263 @@
+---
+###############################################################################
+# Deploy Rook Toolbox
+###############################################################################
+
+- name: Create Rook Toolbox Manifest
+  ansible.builtin.copy:
+    dest: /tmp/rook-toolbox.yaml
+    mode: "0644"
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: rook-ceph-tools
+        namespace: rook-ceph
+        labels:
+          app: rook-ceph-tools
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: rook-ceph-tools
+        template:
+          metadata:
+            labels:
+              app: rook-ceph-tools
+          spec:
+            dnsPolicy: ClusterFirstWithHostNet
+            serviceAccountName: rook-ceph-default
+            containers:
+              - name: rook-ceph-tools
+                image: quay.io/ceph/ceph:v19.2.3
+                command:
+                  - /bin/bash
+                  - -c
+                  - sleep infinity
+                securityContext:
+                  privileged: true
+                volumeMounts:
+                  - name: mon-endpoint-volume
+                    mountPath: /etc/rook
+            volumes:
+              - name: mon-endpoint-volume
+                configMap:
+                  name: rook-ceph-mon-endpoints
+
+- name: Apply Rook Toolbox
+  ansible.builtin.command:
+    cmd: kubectl apply -f /tmp/rook-toolbox.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for Toolbox
+###############################################################################
+
+- name: Wait for Toolbox
+  ansible.builtin.command:
+    cmd: >
+      kubectl wait
+      --for=condition=Available
+      deployment/rook-ceph-tools
+      -n rook-ceph
+      --timeout=600s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Create CephBlockPool
+###############################################################################
+
+- name: Create CephBlockPool Manifest
+  ansible.builtin.copy:
+    dest: /tmp/cephblockpool.yaml
+    mode: "0644"
+    content: |
+      apiVersion: ceph.rook.io/v1
+      kind: CephBlockPool
+      metadata:
+        name: replicapool
+        namespace: rook-ceph
+      spec:
+        failureDomain: host
+
+        replicated:
+          size: 3
+
+- name: Apply CephBlockPool
+  ansible.builtin.command:
+    cmd: kubectl apply -f /tmp/cephblockpool.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for CephBlockPool
+###############################################################################
+
+- name: Wait for CephBlockPool
+  ansible.builtin.shell: |
+    kubectl wait \
+      --for=jsonpath='{.status.phase}'=Ready \
+      cephblockpool/replicapool \
+      -n rook-ceph \
+      --timeout=600s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Create CephFilesystem
+###############################################################################
+
+- name: Create CephFilesystem Manifest
+  ansible.builtin.copy:
+    dest: /tmp/cephfilesystem.yaml
+    mode: "0644"
+    content: |
+      apiVersion: ceph.rook.io/v1
+      kind: CephFilesystem
+      metadata:
+        name: cephfs
+        namespace: rook-ceph
+      spec:
+        metadataPool:
+          replicated:
+            size: 3
+
+        dataPools:
+          - replicated:
+              size: 3
+
+        preserveFilesystemOnDelete: true
+
+        metadataServer:
+          activeCount: 1
+          activeStandby: true
+
+- name: Apply CephFilesystem
+  ansible.builtin.command:
+    cmd: kubectl apply -f /tmp/cephfilesystem.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Wait for CephFilesystem
+###############################################################################
+
+- name: Wait for CephFilesystem
+  ansible.builtin.shell: |
+    kubectl wait \
+      --for=jsonpath='{.status.phase}'=Ready \
+      cephfilesystem/cephfs \
+      -n rook-ceph \
+      --timeout=900s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Create RBD StorageClass
+###############################################################################
+
+- name: Create RBD StorageClass Manifest
+  ansible.builtin.copy:
+    dest: /tmp/rbd-storageclass.yaml
+    mode: "0644"
+    content: |
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: rook-ceph-block
+
+      provisioner: rook-ceph.rbd.csi.ceph.com
+
+      parameters:
+        clusterID: rook-ceph
+        pool: replicapool
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/fstype: ext4
+
+      reclaimPolicy: Delete
+
+      allowVolumeExpansion: true
+
+      volumeBindingMode: Immediate
+
+- name: Apply RBD StorageClass
+  ansible.builtin.command:
+    cmd: kubectl apply -f /tmp/rbd-storageclass.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Create CephFS StorageClass
+###############################################################################
+
+- name: Create CephFS StorageClass Manifest
+  ansible.builtin.copy:
+    dest: /tmp/cephfs-storageclass.yaml
+    mode: "0644"
+    content: |
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: rook-cephfs
+
+      provisioner: rook-ceph.cephfs.csi.ceph.com
+
+      parameters:
+        clusterID: rook-ceph
+        fsName: cephfs
+        pool: cephfs-data0
+
+      reclaimPolicy: Delete
+
+      allowVolumeExpansion: true
+
+      volumeBindingMode: Immediate
+
+- name: Apply CephFS StorageClass
+  ansible.builtin.command:
+    cmd: kubectl apply -f /tmp/cephfs-storageclass.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+###############################################################################
+# Verify Storage Resources
+###############################################################################
+
+- name: Get CephBlockPool
+  ansible.builtin.command:
+    cmd: kubectl get cephblockpool -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_blockpool
+  changed_when: false
+
+- name: Display CephBlockPool
+  ansible.builtin.debug:
+    var: ceph_blockpool.stdout_lines
+
+- name: Get CephFilesystem
+  ansible.builtin.command:
+    cmd: kubectl get cephfilesystem -n rook-ceph
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: ceph_filesystem
+  changed_when: false
+
+- name: Display CephFilesystem
+  ansible.builtin.debug:
+    var: ceph_filesystem.stdout_lines
+
+- name: Get StorageClasses
+  ansible.builtin.command:
+    cmd: kubectl get storageclass
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: storageclasses
+  changed_when: false
+
+- name: Display StorageClasses
+  ansible.builtin.debug:
+    var: storageclasses.stdout_lines
