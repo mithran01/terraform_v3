@@ -318,98 +318,12 @@
       - "Version    : {{ rook_chart_version }}"
 
 # part 3
-###############################################################################
-# Deploy Rook Toolbox
-###############################################################################
-
-###############################################################################
-# Create Rook Toolbox Manifest
-###############################################################################
-
-- name: Create Rook Toolbox Manifest
-  ansible.builtin.copy:
-    dest: /tmp/rook-toolbox.yaml
+- name: Download official toolbox manifest
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/rook/rook/v1.15.9/deploy/examples/toolbox.yaml
+    dest: /tmp/toolbox.yaml
     mode: "0644"
-    content: |
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: rook-ceph-tools
-        namespace: rook-ceph
-      ---
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        name: rook-ceph-tools
-      subjects:
-      - kind: ServiceAccount
-        name: rook-ceph-tools
-        namespace: rook-ceph
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: cluster-admin
-      ---
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: rook-ceph-tools
-        namespace: rook-ceph
-        labels:
-          app: rook-ceph-tools
-      spec:
-        replicas: 1
-        selector:
-          matchLabels:
-            app: rook-ceph-tools
-        template:
-          metadata:
-            labels:
-              app: rook-ceph-tools
-          spec:
-            serviceAccountName: rook-ceph-tools
 
-            dnsPolicy: ClusterFirstWithHostNet
-
-            containers:
-            - name: rook-ceph-tools
-
-              image: quay.io/ceph/ceph:v19.2.3
-
-              imagePullPolicy: IfNotPresent
-
-              command:
-              - /bin/bash
-              - -c
-              - sleep infinity
-
-              securityContext:
-                privileged: true
-
-              env:
-              - name: ROOK_CEPH_USERNAME
-                value: client.admin
-
-              - name: ROOK_CEPH_SECRET
-                valueFrom:
-                  secretKeyRef:
-                    name: rook-ceph-mon
-                    key: ceph-secret
-
-              volumeMounts:
-              - name: mon-endpoints
-                mountPath: /etc/rook
-
-              - name: ceph-config
-                mountPath: /etc/ceph
-
-            volumes:
-            - name: mon-endpoints
-              configMap:
-                name: rook-ceph-mon-endpoints
-
-            - name: ceph-config
-              emptyDir: {}
 
 ###############################################################################
 # Apply Rook Toolbox
