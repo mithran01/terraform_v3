@@ -11,8 +11,8 @@
   roles:
     - controlplane
 
-- name: Install CNI
-  hosts: controlplane
-  become: true
-  roles:
-    - cni
+#- name: Install CNI
+#  hosts: controlplane
+#  become: true
+#  roles:
+#    - cni

@@ -1,0 +1,5 @@
+- name: Install Cilium
+  hosts: controlplane
+  become: true
+  roles:
+    - cilium
