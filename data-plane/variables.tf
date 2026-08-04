@@ -3,12 +3,12 @@ variable "aws_region" {
 }
 variable "desired_capacity" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "min_size" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "max_size" {

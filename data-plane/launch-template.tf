@@ -1,7 +1,7 @@
 resource "aws_launch_template" "data_plane" {
   name_prefix   = "data-plane-"
   image_id      = data.aws_ami.rocky_linux.id
-  instance_type = "t3a.xlarge"
+  instance_type = "t3a.medium"
   key_name      = data.aws_key_pair.existing_key_2.key_name
 
   vpc_security_group_ids = [data.aws_security_group.default.id]
