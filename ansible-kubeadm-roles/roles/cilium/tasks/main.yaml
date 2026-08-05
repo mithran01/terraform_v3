@@ -11,7 +11,7 @@
     helm upgrade --install cilium cilium/cilium \
       --namespace kube-system \
       --create-namespace \
-      --version {{ cilium_version }} \
+      --version 1.18.1 \
       --set kubeProxyReplacement=false \
       --set operator.replicas=1 \
       --wait
