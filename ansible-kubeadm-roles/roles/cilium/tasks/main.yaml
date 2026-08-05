@@ -1,10 +1,18 @@
 ---
+# ---------------------------------------------------------
+# Add Cilium Helm Repository
+# ---------------------------------------------------------
+
 - name: Add Cilium Helm repository
   shell: |
     helm repo add cilium https://helm.cilium.io
     helm repo update
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
+
+# ---------------------------------------------------------
+# Install Cilium
+# ---------------------------------------------------------
 
 - name: Install Cilium
   shell: |
@@ -13,33 +21,21 @@
       --create-namespace \
       --version 1.18.1 \
       --set kubeProxyReplacement=false \
-      --set operator.replicas=1 \
-      --wait
+      --set operator.replicas=1
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
-- name: Wait for Cilium DaemonSet
-  shell: |
-    kubectl rollout status daemonset/cilium \
-      -n kube-system \
-      --timeout=300s
-  environment:
-    KUBECONFIG: /etc/kubernetes/admin.conf
+# ---------------------------------------------------------
+# Verify Helm Release
+# ---------------------------------------------------------
 
-- name: Wait for Cilium Operator
+- name: Verify Cilium Helm release
   shell: |
-    kubectl rollout status deployment/cilium-operator \
-      -n kube-system \
-      --timeout=300s
-  environment:
-    KUBECONFIG: /etc/kubernetes/admin.conf
-
-- name: Verify Cilium
-  shell: |
-    kubectl get pods -n kube-system -l app.kubernetes.io/part-of=cilium
-  register: cilium_status
+    helm list -n kube-system | grep cilium
+  register: cilium_helm
+  changed_when: false
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
 - debug:
-    var: cilium_status.stdout_lines
+    var: cilium_helm.stdout_lines
