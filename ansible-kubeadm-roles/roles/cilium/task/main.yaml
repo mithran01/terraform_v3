@@ -1,6 +1,6 @@
 ---
 - name: Install Cilium CNI
-  hosts: control_plane
+  hosts: controlplane
   become: true
 
   vars:
