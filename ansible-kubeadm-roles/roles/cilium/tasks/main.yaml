@@ -21,7 +21,16 @@
       --create-namespace \
       --version 1.18.1 \
       --set kubeProxyReplacement=false \
-      --set operator.replicas=1
+      --set operator.replicas=1 \
+      --set operator.tolerations[0].key=node-role.kubernetes.io/control-plane \
+      --set operator.tolerations[0].operator=Exists \
+      --set operator.tolerations[1].key=node-role.kubernetes.io/master \
+      --set operator.tolerations[1].operator=Exists \
+      --set operator.tolerations[2].key=node.kubernetes.io/not-ready \
+      --set operator.tolerations[2].operator=Exists \
+      --set operator.tolerations[3].key=node.cloudprovider.kubernetes.io/uninitialized \
+      --set operator.tolerations[3].operator=Exists \
+      --set operator.tolerations[3].effect=NoSchedule
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
