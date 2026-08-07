@@ -1,0 +1,15 @@
+ kubectl get ciliumnodes
+
+ kubectl get ciliumnetworkpolicies
+
+kubectl get ciliumendpoints
+
+## to view the custom resource definition
+ kubectl get crds   
+
+
+kubectl get ciliumnetworkpolicy -n egress-test
+
+kubectl describe ciliumnetworkpolicy fqdn-egress -n egress-test
+
+curl -v -L -I -x http://172.31.43.22:3128 http://facebook.com
