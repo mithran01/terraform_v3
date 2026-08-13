@@ -1,0 +1,651 @@
+{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+        "creationTimestamp": "2026-08-07T09:41:09Z",
+        "generateName": "ebs-csi-controller-68bb5bdbcf-",
+        "labels": {
+            "app": "ebs-csi-controller",
+            "app.kubernetes.io/component": "csi-driver",
+            "app.kubernetes.io/instance": "aws-ebs-csi-driver",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "aws-ebs-csi-driver",
+            "app.kubernetes.io/version": "1.63.1",
+            "helm.sh/chart": "aws-ebs-csi-driver-2.63.1",
+            "pod-template-hash": "68bb5bdbcf"
+        },
+        "name": "ebs-csi-controller-68bb5bdbcf-p6jvg",
+        "namespace": "kube-system",
+        "ownerReferences": [
+            {
+                "apiVersion": "apps/v1",
+                "blockOwnerDeletion": true,
+                "controller": true,
+                "kind": "ReplicaSet",
+                "name": "ebs-csi-controller-68bb5bdbcf",
+                "uid": "0522bfa5-b118-47c1-ad82-f47f272aca4b"
+            }
+        ],
+        "resourceVersion": "8411",
+        "uid": "85034dc0-0916-47cd-b978-cb2167ddc80c"
+    },
+    "spec": {
+        "affinity": {
+            "nodeAffinity": {
+                "preferredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "preference": {
+                            "matchExpressions": [
+                                {
+                                    "key": "eks.amazonaws.com/compute-type",
+                                    "operator": "NotIn",
+                                    "values": [
+                                        "fargate",
+                                        "auto",
+                                        "hybrid"
+                                    ]
+                                }
+                            ]
+                        },
+                        "weight": 1
+                    }
+                ]
+            },
+            "podAntiAffinity": {
+                "preferredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "podAffinityTerm": {
+                            "labelSelector": {
+                                "matchExpressions": [
+                                    {
+                                        "key": "app",
+                                        "operator": "In",
+                                        "values": [
+                                            "ebs-csi-controller"
+                                        ]
+                                    }
+                                ]
+                            },
+                            "topologyKey": "kubernetes.io/hostname"
+                        },
+                        "weight": 100
+                    }
+                ]
+            }
+        },
+        "containers": [
+            {
+                "args": [
+                    "controller",
+                    "--endpoint=$(CSI_ENDPOINT)",
+                    "--batching=true",
+                    "--logging-format=text",
+                    "--user-agent-extra=helm",
+                    "--v=2"
+                ],
+                "env": [
+                    {
+                        "name": "CSI_ENDPOINT",
+                        "value": "unix:///var/lib/csi/sockets/pluginproxy/csi.sock"
+                    },
+                    {
+                        "name": "CSI_NODE_NAME",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "spec.nodeName"
+                            }
+                        }
+                    },
+                    {
+                        "name": "AWS_ACCESS_KEY_ID",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "key_id",
+                                "name": "aws-secret",
+                                "optional": true
+                            }
+                        }
+                    },
+                    {
+                        "name": "AWS_SECRET_ACCESS_KEY",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "access_key",
+                                "name": "aws-secret",
+                                "optional": true
+                            }
+                        }
+                    },
+                    {
+                        "name": "AWS_EC2_ENDPOINT",
+                        "valueFrom": {
+                            "configMapKeyRef": {
+                                "key": "endpoint",
+                                "name": "aws-meta",
+                                "optional": true
+                            }
+                        }
+                    },
+                    {
+                        "name": "AWS_SAGEMAKER_ENDPOINT",
+                        "valueFrom": {
+                            "configMapKeyRef": {
+                                "key": "sagemaker_endpoint",
+                                "name": "aws-meta",
+                                "optional": true
+                            }
+                        }
+                    }
+                ],
+                "image": "public.ecr.aws/ebs-csi-driver/aws-ebs-csi-driver:v1.63.1",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                    "failureThreshold": 10,
+                    "httpGet": {
+                        "path": "/healthz",
+                        "port": "healthz",
+                        "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 10,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 60
+                },
+                "name": "ebs-plugin",
+                "ports": [
+                    {
+                        "containerPort": 9808,
+                        "name": "healthz",
+                        "protocol": "TCP"
+                    }
+                ],
+                "readinessProbe": {
+                    "failureThreshold": 5,
+                    "httpGet": {
+                        "path": "/healthz",
+                        "port": "healthz",
+                        "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 10,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 60
+                },
+                "resources": {
+                    "limits": {
+                        "memory": "256Mi"
+                    },
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "40Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "readOnlyRootFilesystem": true,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "FallbackToLogsOnError",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/var/lib/csi/sockets/pluginproxy/",
+                        "name": "socket-dir"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-gs9fs",
+                        "readOnly": true
+                    }
+                ]
+            },
+            {
+                "args": [
+                    "--timeout=60s",
+                    "--csi-address=$(ADDRESS)",
+                    "--v=2",
+                    "--feature-gates=Topology=true",
+                    "--extra-create-metadata",
+                    "--leader-election=true",
+                    "--default-fstype=ext4",
+                    "--kube-api-qps=20",
+                    "--kube-api-burst=100",
+                    "--worker-threads=100",
+                    "--retry-interval-max=30m",
+                    "--feature-gates=VolumeAttributesClass=false"
+                ],
+                "env": [
+                    {
+                        "name": "ADDRESS",
+                        "value": "/var/lib/csi/sockets/pluginproxy/csi.sock"
+                    },
+                    {
+                        "name": "ENABLE_VAC_FALLBACK",
+                        "value": "true"
+                    }
+                ],
+                "image": "public.ecr.aws/csi-components/csi-provisioner:v6.3.0-eksbuild.3",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "csi-provisioner",
+                "resources": {
+                    "limits": {
+                        "memory": "256Mi"
+                    },
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "40Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "readOnlyRootFilesystem": true,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "FallbackToLogsOnError",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/var/lib/csi/sockets/pluginproxy/",
+                        "name": "socket-dir"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-gs9fs",
+                        "readOnly": true
+                    }
+                ]
+            },
+            {
+                "args": [
+                    "--timeout=6m",
+                    "--csi-address=$(ADDRESS)",
+                    "--v=2",
+                    "--leader-election=true",
+                    "--kube-api-qps=20",
+                    "--kube-api-burst=100",
+                    "--worker-threads=100",
+                    "--retry-interval-max=5m"
+                ],
+                "env": [
+                    {
+                        "name": "ADDRESS",
+                        "value": "/var/lib/csi/sockets/pluginproxy/csi.sock"
+                    }
+                ],
+                "image": "public.ecr.aws/csi-components/csi-attacher:v4.12.0-eksbuild.4",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "csi-attacher",
+                "resources": {
+                    "limits": {
+                        "memory": "256Mi"
+                    },
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "40Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "readOnlyRootFilesystem": true,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "FallbackToLogsOnError",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/var/lib/csi/sockets/pluginproxy/",
+                        "name": "socket-dir"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-gs9fs",
+                        "readOnly": true
+                    }
+                ]
+            },
+            {
+                "args": [
+                    "--timeout=60s",
+                    "--extra-modify-metadata",
+                    "--csi-address=$(ADDRESS)",
+                    "--v=2",
+                    "--handle-volume-inuse-error=false",
+                    "--leader-election=true",
+                    "--kube-api-qps=20",
+                    "--kube-api-burst=100",
+                    "--workers=100",
+                    "--retry-interval-max=30m",
+                    "--feature-gates=VolumeAttributesClass=false"
+                ],
+                "env": [
+                    {
+                        "name": "ADDRESS",
+                        "value": "/var/lib/csi/sockets/pluginproxy/csi.sock"
+                    },
+                    {
+                        "name": "ENABLE_VAC_FALLBACK",
+                        "value": "true"
+                    }
+                ],
+                "image": "public.ecr.aws/csi-components/csi-resizer:v2.2.1-eksbuild.2",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "csi-resizer",
+                "resources": {
+                    "limits": {
+                        "memory": "256Mi"
+                    },
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "40Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "readOnlyRootFilesystem": true,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "FallbackToLogsOnError",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/var/lib/csi/sockets/pluginproxy/",
+                        "name": "socket-dir"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-gs9fs",
+                        "readOnly": true
+                    }
+                ]
+            },
+            {
+                "args": [
+                    "--csi-address=/csi/csi.sock",
+                    "--probe-timeout=60s"
+                ],
+                "image": "public.ecr.aws/csi-components/livenessprobe:v2.19.0-eksbuild.4",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "liveness-probe",
+                "resources": {
+                    "limits": {
+                        "memory": "32Mi"
+                    },
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "32Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "readOnlyRootFilesystem": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "FallbackToLogsOnError",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/csi",
+                        "name": "socket-dir"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-gs9fs",
+                        "readOnly": true
+                    }
+                ]
+            }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": true,
+        "nodeName": "ip-172-31-36-195.ec2.internal",
+        "nodeSelector": {
+            "kubernetes.io/os": "linux"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 2000000000,
+        "priorityClassName": "system-cluster-critical",
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+            "fsGroup": 1000,
+            "runAsGroup": 1000,
+            "runAsNonRoot": true,
+            "runAsUser": 1000
+        },
+        "serviceAccount": "ebs-csi-controller-sa",
+        "serviceAccountName": "ebs-csi-controller-sa",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+            {
+                "key": "CriticalAddonsOnly",
+                "operator": "Exists"
+            },
+            {
+                "effect": "NoExecute",
+                "operator": "Exists",
+                "tolerationSeconds": 300
+            }
+        ],
+        "volumes": [
+            {
+                "emptyDir": {},
+                "name": "socket-dir"
+            },
+            {
+                "name": "kube-api-access-gs9fs",
+                "projected": {
+                    "defaultMode": 420,
+                    "sources": [
+                        {
+                            "serviceAccountToken": {
+                                "expirationSeconds": 3607,
+                                "path": "token"
+                            }
+                        },
+                        {
+                            "configMap": {
+                                "items": [
+                                    {
+                                        "key": "ca.crt",
+                                        "path": "ca.crt"
+                                    }
+                                ],
+                                "name": "kube-root-ca.crt"
+                            }
+                        },
+                        {
+                            "downwardAPI": {
+                                "items": [
+                                    {
+                                        "fieldRef": {
+                                            "apiVersion": "v1",
+                                            "fieldPath": "metadata.namespace"
+                                        },
+                                        "path": "namespace"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "status": {
+        "conditions": [
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-07T09:43:42Z",
+                "status": "True",
+                "type": "PodReadyToStartContainers"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-07T09:43:21Z",
+                "status": "True",
+                "type": "Initialized"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-07T09:43:21Z",
+                "message": "containers with unready status: [ebs-plugin csi-provisioner csi-attacher csi-resizer]",
+                "reason": "ContainersNotReady",
+                "status": "False",
+                "type": "Ready"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-07T09:43:21Z",
+                "message": "containers with unready status: [ebs-plugin csi-provisioner csi-attacher csi-resizer]",
+                "reason": "ContainersNotReady",
+                "status": "False",
+                "type": "ContainersReady"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-07T09:43:21Z",
+                "status": "True",
+                "type": "PodScheduled"
+            }
+        ],
+        "containerStatuses": [
+            {
+                "containerID": "containerd://2a70b5259724b0f819f1a2e3d49fb2cf8d3f24da5f91a0a282ef7a3fcf3801b2",
+                "image": "public.ecr.aws/csi-components/csi-attacher:v4.12.0-eksbuild.4",
+                "imageID": "public.ecr.aws/csi-components/csi-attacher@sha256:96d8dc6e7b985102398b05fefb3859bccace0e634f5d2ecb29318d7d0e287d7a",
+                "lastState": {
+                    "terminated": {
+                        "containerID": "containerd://2a70b5259724b0f819f1a2e3d49fb2cf8d3f24da5f91a0a282ef7a3fcf3801b2",
+                        "exitCode": 1,
+                        "finishedAt": "2026-08-07T10:11:26Z",
+                        "message": " 1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:23.597712       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:24.670383       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:25.832661       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nI0807 10:11:26.048755       1 connection.go:253] \"Still connecting\" address=\"unix:///var/lib/csi/sockets/pluginproxy/csi.sock\"\nE0807 10:11:26.049325       1 main.go:153] \"Failed to connect to the CSI driver\" err=\"context deadline exceeded\" csiAddress=\"/var/lib/csi/sockets/pluginproxy/csi.sock\"\n",
+                        "reason": "Error",
+                        "startedAt": "2026-08-07T10:10:56Z"
+                    }
+                },
+                "name": "csi-attacher",
+                "ready": false,
+                "restartCount": 10,
+                "started": false,
+                "state": {
+                    "waiting": {
+                        "message": "back-off 5m0s restarting failed container=csi-attacher pod=ebs-csi-controller-68bb5bdbcf-p6jvg_kube-system(85034dc0-0916-47cd-b978-cb2167ddc80c)",
+                        "reason": "CrashLoopBackOff"
+                    }
+                }
+            },
+            {
+                "containerID": "containerd://7fc89c211b9a195eef55a272f1a57ed506da07513f976c597daa2f05a807ad00",
+                "image": "public.ecr.aws/csi-components/csi-provisioner:v6.3.0-eksbuild.3",
+                "imageID": "public.ecr.aws/csi-components/csi-provisioner@sha256:008ba1ea6bf1cf1041a635a3b44dfc6c77ecb50775c1c954b848b8f34970fc5c",
+                "lastState": {
+                    "terminated": {
+                        "containerID": "containerd://7fc89c211b9a195eef55a272f1a57ed506da07513f976c597daa2f05a807ad00",
+                        "exitCode": 1,
+                        "finishedAt": "2026-08-07T10:11:25Z",
+                        "message": "i/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:22.196434       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:23.224066       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:24.101426       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:25.159782       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nI0807 10:11:25.878625       1 connection.go:253] \"Still connecting\" address=\"unix:///var/lib/csi/sockets/pluginproxy/csi.sock\"\nE0807 10:11:25.878823       1 csi-provisioner.go:237] context deadline exceeded\n",
+                        "reason": "Error",
+                        "startedAt": "2026-08-07T10:10:55Z"
+                    }
+                },
+                "name": "csi-provisioner",
+                "ready": false,
+                "restartCount": 10,
+                "started": false,
+                "state": {
+                    "waiting": {
+                        "message": "back-off 5m0s restarting failed container=csi-provisioner pod=ebs-csi-controller-68bb5bdbcf-p6jvg_kube-system(85034dc0-0916-47cd-b978-cb2167ddc80c)",
+                        "reason": "CrashLoopBackOff"
+                    }
+                }
+            },
+            {
+                "containerID": "containerd://e1674e647a65e82ad502ae191b3b5bd6d8356ca22994355656aaa84f3030f322",
+                "image": "public.ecr.aws/csi-components/csi-resizer:v2.2.1-eksbuild.2",
+                "imageID": "public.ecr.aws/csi-components/csi-resizer@sha256:a93805da389aa63084624ced59035a13ae717322dcfac512d05984f0114f2cf1",
+                "lastState": {
+                    "terminated": {
+                        "containerID": "containerd://e1674e647a65e82ad502ae191b3b5bd6d8356ca22994355656aaa84f3030f322",
+                        "exitCode": 1,
+                        "finishedAt": "2026-08-07T10:11:26Z",
+                        "message": "d\"\nW0807 10:11:22.759172       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:23.633295       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:24.631563       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nW0807 10:11:25.671910       1 logging.go:55] [core] [Channel #1 SubChannel #2] grpc: addrConn.createTransport failed to connect to {Addr: \"/var/lib/csi/sockets/pluginproxy/csi.sock\", ServerName: \"localhost\", Attributes: {\"\u003c%!p(networktype.keyType=grpc.internal.transport.networktype)\u003e\": \"unix\" }, }. Err: connection error: desc = \"transport: Error while dialing: dial unix /var/lib/csi/sockets/pluginproxy/csi.sock: connect: connection refused\"\nI0807 10:11:26.255951       1 connection.go:253] \"Still connecting\" address=\"unix:///var/lib/csi/sockets/pluginproxy/csi.sock\"\nE0807 10:11:26.256206       1 main.go:169] \"Failed to create CSI client\" err=\"failed to connect to CSI driver: context deadline exceeded\"\n",
+                        "reason": "Error",
+                        "startedAt": "2026-08-07T10:10:56Z"
+                    }
+                },
+                "name": "csi-resizer",
+                "ready": false,
+                "restartCount": 10,
+                "started": false,
+                "state": {
+                    "waiting": {
+                        "message": "back-off 5m0s restarting failed container=csi-resizer pod=ebs-csi-controller-68bb5bdbcf-p6jvg_kube-system(85034dc0-0916-47cd-b978-cb2167ddc80c)",
+                        "reason": "CrashLoopBackOff"
+                    }
+                }
+            },
+            {
+                "containerID": "containerd://f8ba66c743db2fee414c7eb6e607b3ef8adc4948a6330809c8c54b5d19316ec2",
+                "image": "public.ecr.aws/ebs-csi-driver/aws-ebs-csi-driver:v1.63.1",
+                "imageID": "public.ecr.aws/ebs-csi-driver/aws-ebs-csi-driver@sha256:150de06f37bd1bc2ae09e311029edb4a14889b215f59ca3d4ba4e37f4668e867",
+                "lastState": {
+                    "terminated": {
+                        "containerID": "containerd://a04b651b3450049542c547c94cdbb2f4f7f373d61b5425d6359c227e0facd26e",
+                        "exitCode": 2,
+                        "finishedAt": "2026-08-07T10:16:14Z",
+                        "message": "c error: code = FailedPrecondition desc = Failed health check (verify network connection and IAM credentials): dry-run EC2 API call failed: operation error EC2: DescribeAvailabilityZones, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, canceled, context deadline exceeded\"\nE0807 10:16:03.577591       1 driver.go:135] \"GRPC error\" err=\"rpc error: code = FailedPrecondition desc = Failed health check (verify network connection and IAM credentials): dry-run EC2 API call failed: operation error EC2: DescribeAvailabilityZones, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, canceled, context deadline exceeded\"\nE0807 10:16:08.584025       1 driver.go:135] \"GRPC error\" err=\"rpc error: code = FailedPrecondition desc = Failed health check (verify network connection and IAM credentials): dry-run EC2 API call failed: operation error EC2: DescribeAvailabilityZones, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, request canceled, context deadline exceeded\"\nE0807 10:16:14.591025       1 driver.go:135] \"GRPC error\" err=\"rpc error: code = FailedPrecondition desc = Failed health check (verify network connection and IAM credentials): dry-run EC2 API call failed: operation error EC2: DescribeAvailabilityZones, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, canceled, context deadline exceeded\"\nE0807 10:16:14.591332       1 driver.go:135] \"GRPC error\" err=\"rpc error: code = FailedPrecondition desc = Failed health check (verify network connection and IAM credentials): dry-run EC2 API call failed: operation error EC2: DescribeAvailabilityZones, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found, operation error ec2imds: GetMetadata, canceled, context deadline exceeded\"\n",
+                        "reason": "Error",
+                        "startedAt": "2026-08-07T10:14:26Z"
+                    }
+                },
+                "name": "ebs-plugin",
+                "ready": false,
+                "restartCount": 11,
+                "started": true,
+                "state": {
+                    "running": {
+                        "startedAt": "2026-08-07T10:16:14Z"
+                    }
+                }
+            },
+            {
+                "containerID": "containerd://6e2ba1465c699e8b2e4fa405410acd7a64662b06ebf65bc274e708549694cd1f",
+                "image": "public.ecr.aws/csi-components/livenessprobe:v2.19.0-eksbuild.4",
+                "imageID": "public.ecr.aws/csi-components/livenessprobe@sha256:1f949a127e189087364bb6e0d0f975c9352d5c181140c341b151686b07d7265f",
+                "lastState": {},
+                "name": "liveness-probe",
+                "ready": true,
+                "restartCount": 0,
+                "started": true,
+                "state": {
+                    "running": {
+                        "startedAt": "2026-08-07T09:43:42Z"
+                    }
+                }
+            }
+        ],
+        "hostIP": "172.31.36.195",
+        "hostIPs": [
+            {
+                "ip": "172.31.36.195"
+            }
+        ],
+        "phase": "Running",
+        "podIP": "10.0.1.97",
+        "podIPs": [
+            {
+                "ip": "10.0.1.97"
+            }
+        ],
+        "qosClass": "Burstable",
+        "startTime": "2026-08-07T09:43:21Z"
+    }
+}
