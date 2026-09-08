@@ -44,6 +44,52 @@ resource "aws_iam_role" "ansible_server_role" {
     ]
   })
 }
+# -----------------------------------------------------------------------------
+# IAM Role  -- kubernetes access role
+# -----------------------------------------------------------------------------
+resource "aws_iam_role" "kubernetes_access_role" {
+
+  name = "KubernetesAccessRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          AWS = aws_iam_role.ansible_server_role.arn
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ansible_assume_kubernetes_role" {
+
+  name = "ansible-assume-kubernetes-access-role"
+
+  role = aws_iam_role.ansible_server_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "sts:AssumeRole"
+        ]
+
+        Resource = aws_iam_role.kubernetes_access_role.arn
+      }
+    ]
+  })
+}
 # ---------------------------------------------------------
 # IAM POLICY
 # ---------------------------------------------------------
