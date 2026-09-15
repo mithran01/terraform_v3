@@ -10,9 +10,9 @@ jobs:
   terraform_destroy:
     runs-on: ubuntu-latest
 
-    env:
-      TF_VAR_ansible_plane_key: ${{ secrets.DEMOV1 }}
-      TF_VAR_control_plane_key: ${{ secrets.DEMOV2_PUB }}
+    # env:
+    #   TF_VAR_ansible_plane_key: ${{ secrets.DEMOV1 }}
+    #   TF_VAR_control_plane_key: ${{ secrets.DEMOV2_PUB }}
 
     steps:
 
@@ -36,9 +36,9 @@ jobs:
       # ---------------------------------------------------------
 
       - name: Terraform Init
-        working-directory: bootstrap
+        working-directory: 00bootstrap
         run: terraform init
 
       - name: Terraform Destroy
-        working-directory: bootstrap
+        working-directory: 00bootstrap
         run: terraform destroy -auto-approve
