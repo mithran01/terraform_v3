@@ -11,6 +11,9 @@ resource "aws_instance" "dns" {
 
   key_name = data.aws_key_pair.existing_key.key_name
 
+  user_data                   = file("${path.module}/dns-userdata.sh")
+  user_data_replace_on_change = true
+
   vpc_security_group_ids = [
     data.aws_security_group.default.id
   ]
