@@ -1,5 +1,5 @@
-resource "aws_instance" "dns" {
-  count         = 0
+resource "aws_instance" "ntp" {
+  count         = 1
   ami           = data.aws_ami.rocky_linux.id
   instance_type = "t3.micro"
 
@@ -7,20 +7,26 @@ resource "aws_instance" "dns" {
 
   private_ip = cidrhost(
     data.aws_subnet.subnet_us_east_1a.cidr_block,
-    var.dns_host_number
+    var.ntp_host_number
   )
 
   key_name = data.aws_key_pair.existing_key.key_name
-
-  user_data                   = file("${path.module}/dns-userdata.sh")
-  user_data_replace_on_change = true
 
   vpc_security_group_ids = [
     data.aws_security_group.default.id
   ]
 
+  #user_data = file("${path.module}/ntp-userdata.sh")
+  #user_data_replace_on_change = true
+
+  #metadata_options {
+  #  http_tokens = "required"
+  #}
+
   tags = {
-    Name       = "dns-Server"
-    Managed_by = "Terraform-user"
+    Name        = "ntp01"
+    Role        = "ntp"
+    Environment = "lab"
+    Managed_by  = "Terraform-user"
   }
 }
