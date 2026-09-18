@@ -1,5 +1,5 @@
 resource "aws_instance" "ntp" {
-  count         = 1
+  count         = 0
   ami           = data.aws_ami.rocky_linux.id
   instance_type = "t3.micro"
 

@@ -1,5 +1,5 @@
 resource "aws_instance" "dns" {
-  count         = 0
+  count         = 1
   ami           = data.aws_ami.rocky_linux.id
   instance_type = "t3.micro"
 

@@ -43,9 +43,9 @@ logdir /var/log/chrony
 EOF
 
 # 5. Configure the firewall
-systemctl enable --now firewalld
-firewall-cmd --permanent --add-service=ntp
-firewall-cmd --reload
+#systemctl enable --now firewalld
+#firewall-cmd --permanent --add-service=ntp
+#firewall-cmd --reload
 
 # 6. Enable and restart Chrony
 systemctl enable chronyd
